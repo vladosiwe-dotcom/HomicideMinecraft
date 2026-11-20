@@ -1,0 +1,2 @@
+-- Replaces Roblox's default "Health" script so characters do not regenerate
+-- health on their own. Damage and recovery are driven by the organism system.

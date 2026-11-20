@@ -1,0 +1,3 @@
+# Tool versions for this project. Install with `rokit install`.
+[tools]
+rojo = "rojo-rbx/rojo@7.4.4"
