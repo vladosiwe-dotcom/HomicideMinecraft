@@ -1,5 +1,6 @@
 *.rbxl
 *.rbxlx
+!build/ZCitySandbox.rbxlx
 *.rbxl.lock
 *.rbxlx.lock
 *.rbxm
