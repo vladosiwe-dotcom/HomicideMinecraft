@@ -930,17 +930,35 @@ async function connect(auto){
     } catch (e) { lastErr = e; }
   }
   t.className = "status err";
-  t.textContent = explain(lastErr, true);
+  t.textContent = await diagnose(lastErr);
 }
-function explain(e, conn){
+let CSP_BLOCK = false;
+document.addEventListener("securitypolicyviolation", () => { CSP_BLOCK = true; });
+function explain(e){
   const st = e?.status, m = String(e?.message || "");
+  if (/location is not supported|not available in your country|unsupported_country|region/i.test(m)) return "Сервис не работает в твоей стране. Включи VPN и нажми «Проверить подключение» ещё раз, либо вставь ключ другого сервиса.";
   if (st === 400 && /api key/i.test(m) || st === 401 || st === 403) return "Ключ не подошёл (" + st + "). Проверь, что скопирован целиком, без пробелов, и выбран правильный сервис.";
   if (st === 429) return "Лимит бесплатных запросов исчерпан. Подожди минуту (или до завтра) либо выбери другую модель.";
   if (st === 503 || st === 500) return "Модель сейчас перегружена. Выбери другую модель из списка или попробуй позже.";
   if (st === 404) return "Модель не найдена. Нажми «Проверить подключение», чтобы выбрать доступную.";
   if (st === 413 || /context|too long|tokens/i.test(m)) return "Свод не влезает в лимит этой модели. Выбери модель с большим контекстом (лучше Gemini).";
   if (st) return "Ошибка " + st + ": " + m.slice(0, 200);
-  return (S.provider==="ollama"||S.provider==="custom") ? "Нет связи с " + base() + ". Сервер запущен? Для Ollama нужен OLLAMA_ORIGINS=*, для LM Studio — включить CORS." : "Нет связи с сервисом. Проверь интернет.";
+  return null;
+}
+async function ping(url){ try { await fetch(url, { mode:"no-cors", cache:"no-store" }); return true; } catch(e) { return false; } }
+async function diagnose(e){
+  const known = explain(e); if (known) return known;
+  if (S.provider==="ollama"||S.provider==="custom") return "Нет связи с " + base() + ". Сервер запущен? Для Ollama нужен OLLAMA_ORIGINS=*, для LM Studio — включить CORS.";
+  const framed = (() => { try { return window.top !== window; } catch(_) { return true; } })();
+  if (CSP_BLOCK || framed || !/^(file|https?):$/.test(location.protocol))
+    return "Файл открыт во встроенном просмотре (приложение, мессенджер), а там запросы в интернет запрещены. Скачай файл на ПК и открой его двойным щелчком в Chrome или Edge.";
+  if (!navigator.onLine) return "Браузер сообщает, что интернета нет.";
+  const net = await ping("https://www.google.com/generate_204") || await ping("https://www.cloudflare.com/cdn-cgi/trace");
+  if (!net) return "Браузер не может выйти в интернет. Проверь подключение, антивирус или прокси.";
+  const host = new URL(base()).origin;
+  const svc = await ping(host + "/");
+  if (!svc) return "Интернет есть, но сервис " + new URL(base()).host + " недоступен: его блокирует провайдер, антивирус или блокировщик рекламы. Включи VPN (или отключи блокировщик для этого файла) и нажми «Проверить подключение».";
+  return "Сервис доступен, но браузер отклонил запрос (" + (e?.message || "ошибка сети") + "). Отключи блокировщик рекламы/антивирусную проверку для этого файла или попробуй другой браузер.";
 }
 $("test").onclick = () => connect(!!S.apiKey && guessProviders(S.apiKey).length > 0 && !guessProviders(S.apiKey).includes(S.provider) ? true : false);
 
@@ -1041,8 +1059,7 @@ async function run(){
     if (e?.name === "AbortError") setStatus("Остановлено.");
     else if (e?.code === "rules") setStatus("Не удалось загрузить текст Свода. Обнови страницу.", true);
     else if (e?.code === "empty") setStatus("Модель вернула пустой ответ. Скорее всего, не хватило контекста — увеличь «Контекст» в настройках.", true);
-    else if (e?.code === "http") setStatus(explain(e), true);
-    else setStatus("Нет связи с сервером ИИ (" + base() + "). Проверь настройки подключения.", true);
+    else { setStatus("Проверяю, в чём проблема…", true); diagnose(e).then(m => setStatus(m, true)); }
     if (turns.length) followWrap.hidden = false;
   } finally {
     busy = false; askBtn.disabled = followBtn.disabled = false; stopBtn.hidden = true;
