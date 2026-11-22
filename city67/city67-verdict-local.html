@@ -1,22 +1,25 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Вердикт CITY-67 (локально)</title>
+<title>Вердикт CITY-67 (ПК)</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&family=Unbounded:wght@600;700&display=swap">
 <style>
-/* Layout: one narrow column, an admin's case file — input on top, verdict card below, history at the bottom */
+/* Layout: one narrow column, an admin's case file — tabs, then search list or case form + per-player verdict cards with fold-out panels */
 :root{
   --bg:#eef0ec; --surface:#fbfcfa; --ink:#16201b; --muted:#5d6b63; --line:#cfd6d0;
   --accent:#1f6b4f; --accent-ink:#ffffff; --warn:#a4541b; --soft:#e2ebe5;
+  --ok:#2e7d4f; --ban:#b3471d; --perm:#8f1d2c; --caution:#9a6b00;
   --display:"Unbounded","Arial Black",system-ui,sans-serif;
   --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#101512; --surface:#171e1a; --ink:#e3ebe6; --muted:#97a69d; --line:#2b3630;
-  --accent:#4fbf8f; --accent-ink:#08130e; --warn:#e39a5f; --soft:#1d2a23; color-scheme:dark}}
+  --accent:#4fbf8f; --accent-ink:#08130e; --warn:#e39a5f; --soft:#1d2a23;
+  --ok:#5cc98c; --ban:#f08a5d; --perm:#ff7b8c; --caution:#e8c15a; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#101512; --surface:#171e1a; --ink:#e3ebe6; --muted:#97a69d; --line:#2b3630;
-  --accent:#4fbf8f; --accent-ink:#08130e; --warn:#e39a5f; --soft:#1d2a23; color-scheme:dark}
+  --accent:#4fbf8f; --accent-ink:#08130e; --warn:#e39a5f; --soft:#1d2a23;
+  --ok:#5cc98c; --ban:#f08a5d; --perm:#ff7b8c; --caution:#e8c15a; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
@@ -26,48 +29,36 @@ header{display:flex;flex-direction:column;gap:4px}
 h1{font-family:var(--display);font-size:clamp(24px,7vw,34px);line-height:1.1;margin:0;text-wrap:balance}
 h1 span{color:var(--accent)}
 .sub{color:var(--muted);margin:0;font-size:15px}
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
 label{font-weight:600;font-size:14px}
-textarea{width:100%;min-height:140px;resize:vertical;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);
+textarea{width:100%;min-height:130px;resize:vertical;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);
   border:1px solid var(--line);border-radius:10px;padding:12px}
-textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+textarea:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
 .chip{flex:0 0 auto;font:inherit;font-size:13px;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:999px;padding:6px 12px;cursor:pointer}
-.row{display:flex;gap:8px;flex-wrap:wrap}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .btn{font:inherit;font-weight:600;border-radius:10px;padding:12px 16px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);flex:1 1 160px}
+.btn.small{padding:6px 10px;font-size:13px}
 .btn:disabled{opacity:.5;cursor:default}
 .status{font-size:14px;color:var(--muted);min-height:1em}
 .status.err{color:var(--warn)}
-#result{line-height:1.55;overflow-wrap:anywhere}
-#result h2,#result h3{font-family:var(--display);font-size:16px;margin:18px 0 6px;letter-spacing:.01em}
-#result h2:first-child,#result h3:first-child{margin-top:0}
-#result p{margin:6px 0}
-#result ul,#result ol{margin:6px 0;padding-left:20px}
-#result li{margin:3px 0}
-#result strong{color:var(--accent)}
-#result code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:1px 5px;border-radius:5px}
-#result hr{border:0;border-top:1px solid var(--line);margin:14px 0}
-.verdict-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.followup{display:flex;gap:8px;align-items:flex-end}
-.followup textarea{min-height:52px;flex:1;min-width:0}
-.thinking{display:inline-flex;gap:4px}
+.note{font-size:13px;color:var(--muted)}
+.thinking{display:inline-flex;gap:4px;vertical-align:middle}
 .thinking i{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:b 1s infinite}
 .thinking i:nth-child(2){animation-delay:.15s}.thinking i:nth-child(3){animation-delay:.3s}
 @keyframes b{0%,100%{opacity:.25}50%{opacity:1}}
 @media (prefers-reduced-motion:reduce){.thinking i{animation:none}}
-.hist{display:flex;flex-direction:column;gap:6px}
-.hist button{text-align:left;font:inherit;font-size:14px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.note{font-size:13px;color:var(--muted)}
 .tabs{display:flex;gap:6px;background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:4px}
 .tabs button{flex:1;font:inherit;font-weight:600;font-size:15px;border:0;border-radius:9px;padding:10px;background:transparent;color:var(--muted);cursor:pointer}
 .tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+/* search */
 .search{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:6px}
 .search input{width:100%;font:inherit;font-size:17px;color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:13px 14px}
 .search input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .meta{font-size:13px;color:var(--muted);margin-top:6px}
-.list{display:flex;flex-direction:column;gap:8px}
+.list{display:flex;flex-direction:column;gap:8px;min-width:0}
 .sec{font-family:var(--display);font-size:13px;letter-spacing:.02em;color:var(--muted);margin:14px 0 2px;text-transform:uppercase}
 .art{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
 .art-h{display:flex;gap:10px;align-items:baseline;cursor:pointer;background:none;border:0;padding:0;font:inherit;color:inherit;text-align:left;width:100%}
@@ -80,8 +71,62 @@ textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outl
 .snip{font-size:14px;color:var(--muted);overflow-wrap:anywhere}
 .full{font-size:14.5px;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:8px;overflow-wrap:anywhere}
 .full p{margin:0}
+.explain{font-size:14.5px;background:var(--soft);border-radius:8px;padding:9px 11px;overflow-wrap:anywhere}
+.explain p{margin:4px 0}
 mark{background:color-mix(in srgb,var(--accent) 28%,transparent);color:inherit;border-radius:3px;padding:0 1px}
 .empty{color:var(--muted);text-align:center;padding:24px 0}
+
+/* verdict */
+.summary{font-size:15px;margin:0}
+.verdict{display:flex;flex-direction:column;gap:12px}
+.overview{display:flex;flex-direction:column;gap:6px}
+.ov{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.ov:last-child{border-bottom:0}
+.ov .who{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.pill{flex:0 0 auto;font-size:13px;font-weight:600;border-radius:999px;padding:4px 10px;border:1.5px solid currentColor;white-space:nowrap;max-width:60%;overflow:hidden;text-overflow:ellipsis}
+.sev-none{color:var(--ok)} .sev-warn{color:var(--caution)} .sev-ban{color:var(--ban)} .sev-perm{color:var(--perm)} .sev-other{color:var(--muted)}
+.player{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+.player-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;background:var(--soft)}
+.player-h h3{font-family:var(--display);font-size:15px;margin:0;min-width:0;overflow-wrap:anywhere}
+.player-b{padding:6px 14px 12px;display:flex;flex-direction:column;gap:6px}
+.vio{border-bottom:1px solid var(--line)}
+.vio:last-of-type{border-bottom:0}
+.vio>summary,.fold>summary{list-style:none;cursor:pointer;display:flex;gap:10px;align-items:baseline;padding:10px 0}
+.vio>summary::-webkit-details-marker,.fold>summary::-webkit-details-marker{display:none}
+.vio>summary .ttl{font-weight:600}
+.vio>summary .give{font-size:13px;color:var(--ban);font-weight:600;flex:0 0 auto;max-width:40%;text-align:right}
+.vio[open]>summary .chev,.fold[open]>summary .chev{transform:rotate(90deg)}
+.vio-b{display:flex;flex-direction:column;gap:8px;padding:0 0 12px}
+.blk{display:grid;grid-template-columns:1fr;gap:2px}
+.blk .k{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.blk .v{font-size:15px;overflow-wrap:anywhere}
+.chain{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:start;background:var(--soft);border-radius:10px;padding:10px 12px}
+.chain .k{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding-top:3px;white-space:nowrap}
+.chain .v{font-size:15px;min-width:0;overflow-wrap:anywhere}
+.chain .v.res{font-weight:600;color:var(--ban)}
+.fold{border-top:1px dashed var(--line)}
+.fold>summary{font-size:14px;font-weight:600;color:var(--accent);padding:8px 0}
+.fold .full{border-top:0;padding-top:0;padding-bottom:8px}
+.warnbox{font-size:13.5px;color:var(--warn);background:color-mix(in srgb,var(--warn) 12%,transparent);border-radius:8px;padding:6px 10px}
+.calc ul,.missing ul{margin:4px 0;padding-left:20px}
+.calc li,.missing li{margin:2px 0;font-size:14.5px}
+.calc .plus{color:var(--ban)} .calc .minus{color:var(--ok)}
+.missing{border:1px dashed var(--line);border-radius:12px;padding:10px 14px}
+.missing h4{margin:0 0 4px;font-size:14px}
+.md p{margin:6px 0}.md ul,.md ol{margin:6px 0;padding-left:20px}.md h3{font-family:var(--display);font-size:15px;margin:14px 0 4px}
+.md strong{color:var(--accent)}
+.followup{display:flex;gap:8px;align-items:flex-end}
+.followup textarea{min-height:52px;flex:1;min-width:0}
+.hist{display:flex;flex-direction:column;gap:6px}
+.hrow{display:flex;gap:6px;align-items:stretch}
+.hrow .open{flex:1;min-width:0;text-align:left;font:inherit;font-size:14px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 12px;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.hrow .open .q{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hrow .open .when{font-size:12px;color:var(--muted)}
+.hrow .del{flex:0 0 auto;font:inherit;background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:10px;padding:0 12px;cursor:pointer}
+.hrow .del.confirm{color:var(--warn);border-color:var(--warn)}
+.sync{font-size:12px;color:var(--muted);display:inline-flex;gap:6px;align-items:center}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.sync.on i{background:var(--ok)}
 [hidden]{display:none!important}
 
 .settings summary{cursor:pointer;font-weight:600;font-size:14px}
@@ -95,7 +140,7 @@ mark{background:color-mix(in srgb,var(--accent) 28%,transparent);color:inherit;b
   <header>
     <div class="tag">CITY-67 · zeta-collective · свод от 17.10.2026</div>
     <h1>Вердикт <span>CITY-67</span></h1>
-    <p class="sub">Быстрый поиск по Своду и сроков бана, а для сложных случаев — разбор ситуации с ИИ.</p>
+    <p class="sub">Поиск по Своду со сроками наказаний и разбор ситуаций: причина, нарушенный пункт, наказание.</p>
   </header>
 
   <div class="tabs" role="tablist">
@@ -105,15 +150,14 @@ mark{background:color-mix(in srgb,var(--accent) 28%,transparent);color:inherit;b
 
   <div id="paneSearch" class="list">
     <div class="search">
-      <input id="q" type="search" placeholder="Например: freekill, оскорбление, 1.5, рейд кулдаун" autocomplete="off" enterkeyhint="search">
+      <input id="q" type="search" placeholder="Например: фк, оскорбление, 1.5, рейд кулдаун" autocomplete="off" enterkeyhint="search">
       <div class="meta" id="qmeta"></div>
     </div>
     <div class="list" id="results"><div class="empty">Загружаю Свод…</div></div>
   </div>
 
   <div id="paneAi" class="list" hidden>
-
-  <details class="panel settings" id="settings">
+<details class="panel settings" id="settings">
     <summary>Подключение к ИИ</summary>
     <label class="field" style="margin-top:10px"><span>API-ключ — вставь любой: Gemini, Groq, OpenRouter, Mistral, DeepSeek, OpenAI. Сервис определится сам</span><input id="apiKey" type="password" autocomplete="off" placeholder="например, ключ из aistudio.google.com"></label>
     <div class="grid">
@@ -126,38 +170,39 @@ mark{background:color-mix(in srgb,var(--accent) 28%,transparent);color:inherit;b
     <div class="row"><button class="btn" id="test" type="button">Проверить подключение</button></div>
     <div class="status" id="testStatus"></div>
   </details>
+    <section class="panel">
+      <label for="situation">Ситуация</label>
+      <textarea id="situation" placeholder="Кто, что сделал, при каких обстоятельствах, есть ли запись/логи, были ли раньше нарушения…"></textarea>
+      <div class="chips" id="examples"></div>
+      <div class="row">
+        <button class="btn primary" id="ask">Разобрать ситуацию</button>
+        <button class="btn" id="stop" hidden>Стоп</button>
+      </div>
+      <div class="status" id="status"></div>
+    </section>
 
-  <section class="panel">
-    <label for="situation">Ситуация</label>
-    <textarea id="situation" placeholder="Кто, что сделал, при каких обстоятельствах, есть ли запись/логи, были ли раньше нарушения…"></textarea>
-    <div class="chips" id="examples"></div>
-    <div class="row">
-      <button class="btn primary" id="ask">Разобрать ситуацию</button>
-      <button class="btn" id="stop" hidden>Стоп</button>
-    </div>
-    <div class="status" id="status"></div>
-  </section>
+    <section class="panel" id="resultPanel" hidden>
+      <div class="row" style="justify-content:space-between">
+        <span class="tag">Разбор</span>
+        <button class="btn small" id="copy">Копировать вердикт</button>
+      </div>
+      <div id="result"></div>
+      <div class="followup" id="followWrap" hidden>
+        <textarea id="follow" placeholder="Уточнить: «а если у него это второй раз за неделю?»"></textarea>
+        <button class="btn primary" id="followBtn" style="flex:0 0 auto" aria-label="Отправить уточнение">→</button>
+      </div>
+    </section>
 
-  <section class="panel" id="resultPanel" hidden>
-    <div class="verdict-head">
-      <span class="tag">Предложение по наказанию</span>
-      <button class="btn" id="copy" style="padding:6px 10px;font-size:13px">Копировать</button>
-    </div>
-    <div id="result"></div>
-    <div class="followup" id="followWrap" hidden>
-      <textarea id="follow" placeholder="Уточнить: «а если у него это второй раз за неделю?»"></textarea>
-      <button class="btn primary" id="followBtn" style="flex:0 0 auto">→</button>
-    </div>
-  </section>
-
-  <section id="histWrap" hidden>
-    <div class="tag" style="margin-bottom:8px">Недавние разборы (только на этом устройстве)</div>
-    <div class="hist" id="hist"></div>
-  </section>
-
+    <section id="histWrap" class="list">
+      <div class="row" style="justify-content:space-between">
+        <span class="tag">История разборов</span>
+        <span class="sync" id="sync"><i></i><span id="syncText">Только на этом устройстве</span></span>
+      </div>
+      <div class="hist" id="hist"><div class="note">Здесь появятся твои разборы.</div></div>
+    </section>
   </div>
 
-  <p class="note">Это подсказка, а не вердикт. Окончательное решение принимает администратор по доказательствам (п. 0.6, 9.3). Ответы пишет выбранная модель по тексту Свода; локальные модели ошибаются чаще — проверяй номера пунктов.</p>
+  <p class="note" id="footNote">Это подсказка, а не вердикт. Окончательное решение принимает администратор по доказательствам (п. 0.6, 9.3). Разбор пишет выбранный ИИ по тексту Свода — проверяй номера пунктов. История в этой версии хранится только в этом браузере; для синхронизации с телефоном пользуйся ссылкой на claude.ai.</p>
 </div>
 
 
@@ -820,21 +865,43 @@ const EXAMPLES = [
   "Полицейский арестовал игрока, который просто стоял рядом с местом ограбления. Игрок в ответ убил полицейского.",
   "Игрок умер в рейде и через минуту вернулся на то же место, чтобы отомстить убийце.",
 ];
-const INSTRUCTIONS = `Ты — ассистент администратора игрового сервера Garry's Mod (DarkRP) CITY-67. Ниже полный текст Свода правил сервера. Твоя задача: по описанию ситуации предложить, какое наказание получит каждый участник.
+const INSTRUCTIONS = `Ты — ассистент администратора игрового сервера Garry's Mod (DarkRP) CITY-67. Ниже полный текст Свода правил сервера. По описанию ситуации определи, что нарушил каждый участник и какое наказание ему положено.
 
-Порядок ответа (на русском, кратко, удобно читать с телефона, markdown):
-### Итог
-По одной строке на каждого участника: **Игрок — наказание** (например «**Игрок A — бан 2 часа**» или «**Игрок B — нарушений нет**»).
-### Разбор по участникам
-Для каждого участника: какие пункты нарушены (номер пункта и части, коротко суть нормы), санкция пункта, отягчающие и смягчающие обстоятельства по п. 0.7.3–0.7.4, сложение (0.7.6) или рецидив (0.7.7), если применимо, и как получен итоговый срок. Если действие прямо разрешено (самооборона, линия огня и т.п.) — укажи пункт-исключение.
-### Чего не хватает
-Какие доказательства или факты нужны, чтобы вердикт был обоснованным (п. 0.6), и как изменится наказание в зависимости от них. Если всё ясно — напиши одной строкой.
+Ответ — СТРОГО один JSON-объект без markdown и без текста вокруг, по схеме:
+{
+  "summary": "1–2 предложения: что произошло и общий вывод",
+  "players": [
+    {
+      "name": "Игрок A",
+      "verdict": "итоговое наказание коротко, напр. «бан 18 часов», «предупреждение», «перманентный бан», «нарушений нет»",
+      "severity": "none | warn | ban | perm",
+      "violations": [
+        {
+          "article": "номер пункта как в Своде, напр. 1.5",
+          "part": "часть, напр. «ч.1» или пусто",
+          "title": "название пункта, напр. FreeKill",
+          "meaning": "что означает это нарушение простыми словами, 1–2 предложения",
+          "reason": "почему именно в этой ситуации это нарушение: какие действия игрока, со ссылкой на факты",
+          "sanction": "санкция пункта дословно по Своду",
+          "assigned": "что назначено по этому пункту, напр. «бан 2 часа»"
+        }
+      ],
+      "allowed": "если действия разрешены (самооборона, линия огня и т.п.) — пункт-исключение и почему; иначе пусто",
+      "aggravating": ["отягчающие обстоятельства по п. 0.7.3"],
+      "mitigating": ["смягчающие по п. 0.7.4"],
+      "calculation": "как получен итоговый срок: сложение (0.7.6), рецидив (0.7.7), середина диапазона и т.д."
+    }
+  ],
+  "missing": ["каких доказательств/фактов не хватает и как от них изменится наказание (п. 0.6)"]
+}
 
 Правила работы:
-- Опирайся только на текст Свода ниже. Не выдумывай пункты и сроки. Если ситуация Сводом не покрыта — так и скажи и укажи ближайшие общие положения.
-- Срок выбирай строго внутри диапазона пункта по критериям 0.7, без выхода за диапазон.
-- Если в ситуации не хватает ключевых деталей, всё равно дай предварительную оценку с вариантами («если …, то …»).
-- Не повторяй текст правил целиком, цитируй только ключевые слова.
+- Опирайся только на текст Свода ниже. Не выдумывай пункты и сроки. Номер пункта — ровно как в заголовке Свода (например 1.5, 0А.3).
+- Срок выбирай строго внутри диапазона пункта по критериям 0.7.
+- Если участник ничего не нарушил — severity "none", violations пустой массив, в allowed объясни почему.
+- Если деталей не хватает — всё равно дай предварительную оценку и опиши варианты в missing.
+- При уточнении от пользователя верни ПОЛНЫЙ обновлённый JSON в той же схеме.
+- Пиши по-русски, коротко и понятно.
 
 ===== СВОД ПРАВИЛ CITY-67 =====
 `;
@@ -843,22 +910,29 @@ const $ = id => document.getElementById(id);
 const sit = $("situation"), askBtn = $("ask"), stopBtn = $("stop"), statusEl = $("status"),
       resPanel = $("resultPanel"), resEl = $("result"), followWrap = $("followWrap"),
       follow = $("follow"), followBtn = $("followBtn");
+let ctl = null, current = null, busy = false, ARTS = [];
 
-let RULES = document.getElementById("rulesText").textContent, sample = true, ctl = null, turns = [], busy = false;
+function lsGet(k){ try { return JSON.parse(localStorage.getItem(k) || "null"); } catch(e) { return null; } }
+function lsSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) {} }
+function setStatus(t, err){ statusEl.textContent = t || ""; statusEl.className = "status" + (err ? " err" : ""); }
+function esc(s){ return String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function inline(s){ return esc(s).replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>"); }
+function md(src){
+  const out = []; let list = null;
+  const close = () => { if (list) { out.push(`</${list}>`); list = null; } };
+  for (const raw of String(src).split("\n")) {
+    const l = raw.trimEnd(); let m;
+    if (!l.trim()) { close(); continue; }
+    if ((m = l.match(/^#{1,6}\s+(.*)/))) { close(); out.push(`<h3>${inline(m[1])}</h3>`); continue; }
+    if ((m = l.match(/^\s*[-*•]\s+(.*)/))) { if (list !== "ul") { close(); out.push("<ul>"); list = "ul"; } out.push(`<li>${inline(m[1])}</li>`); continue; }
+    if ((m = l.match(/^\s*\d+[.)]\s+(.*)/))) { if (list !== "ol") { close(); out.push("<ol>"); list = "ol"; } out.push(`<li>${inline(m[1])}</li>`); continue; }
+    close(); out.push(`<p>${inline(l)}</p>`);
+  }
+  close(); return out.join("");
+}
+function fmtWhen(ts){ try { return new Date(ts).toLocaleString("ru-RU", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" }); } catch(e) { return ""; } }
 
-EXAMPLES.forEach(t => {
-  const b = document.createElement("button");
-  b.className = "chip"; b.type = "button";
-  b.textContent = t.length > 42 ? t.slice(0, 40) + "…" : t;
-  b.title = t;
-  b.onclick = () => { sit.value = t; sit.focus(); };
-  $("examples").appendChild(b);
-});
-
-function store(k, v){ try{ if(v===undefined) return JSON.parse(localStorage.getItem(k)||"null"); localStorage.setItem(k, JSON.stringify(v)); }catch(e){ return null; } }
-try{ sit.value = localStorage.getItem("draft") || ""; }catch(e){}
-sit.addEventListener("input", () => { try{ localStorage.setItem("draft", sit.value); }catch(e){} });
-
+let RULES = document.getElementById("rulesText").textContent;
 async function loadRules(){ return RULES; }
 
 const PROV = {
@@ -880,11 +954,11 @@ function guessProviders(key){
   if (/^sk-/.test(key)) return ["openai","deepseek"];
   return ["mistral","gemini","groq","openrouter","deepseek","openai"];
 }
-const S = Object.assign({ provider:"gemini", baseUrl:PROV.gemini.url, model:"gemini-3.6-flash", ctx:49152, apiKey:"", models:[] }, store("cfg") || {});
+const S = Object.assign({ provider:"gemini", baseUrl:PROV.gemini.url, model:"gemini-3.6-flash", ctx:49152, apiKey:"", models:[] }, lsGet("cfg") || {});
 if (S.provider === "gemini" && (!S.model || S.model === "gemini-3.8-flash")) S.model = "gemini-3.6-flash";
 const sel = $("provider");
 sel.innerHTML = Object.entries(PROV).map(([k,v]) => `<option value="${k}">${v.name}</option>`).join("");
-const save = () => store("cfg", S);
+const save = () => lsSet("cfg", S);
 function fill(){ ["provider","baseUrl","model","ctx","apiKey"].forEach(k => { $(k).value = S[k] ?? ""; }); $("ctxField").hidden = S.provider!=="ollama"; $("models").innerHTML = (S.models||[]).map(n=>`<option value="${esc(n)}">`).join(""); }
 fill();
 ["baseUrl","model","ctx"].forEach(k => $(k).addEventListener("change", () => { S[k] = k==="ctx" ? +$(k).value : $(k).value.trim(); save(); }));
@@ -1006,125 +1080,29 @@ async function ask(messages, signal, onText){
 }
 function stripThink(t){ return t.replace(/<think>[\s\S]*?(<\/think>|$)/g,"").trimStart(); }
 
-function setStatus(t, err){ statusEl.textContent = t || ""; statusEl.className = "status" + (err ? " err" : ""); }
-
-function esc(s){ return s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
-function inline(s){ return esc(s).replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/(^|[^*])\*([^*\n]+)\*/g,"$1<em>$2</em>"); }
-function md(src){
-  const out = []; let list = null;
-  const close = () => { if (list) { out.push(`</${list}>`); list = null; } };
-  for (const raw of src.split("\n")) {
-    const l = raw.trimEnd();
-    let m;
-    if (!l.trim()) { close(); continue; }
-    if ((m = l.match(/^#{1,6}\s+(.*)/))) { close(); out.push(`<h3>${inline(m[1])}</h3>`); continue; }
-    if (/^(-{3,}|\*{3,})$/.test(l.trim())) { close(); out.push("<hr>"); continue; }
-    if ((m = l.match(/^\s*[-*•]\s+(.*)/))) { if (list !== "ul") { close(); out.push("<ul>"); list = "ul"; } out.push(`<li>${inline(m[1])}</li>`); continue; }
-    if ((m = l.match(/^\s*\d+[.)]\s+(.*)/))) { if (list !== "ol") { close(); out.push("<ol>"); list = "ol"; } out.push(`<li>${inline(m[1])}</li>`); continue; }
-    close(); out.push(`<p>${inline(l)}</p>`);
-  }
-  close(); return out.join("");
+async function callAI(sys, turns, signal, onText, opts = {}){
+  try { return await ask([{ role:"system", content: sys }, ...turns], signal || new AbortController().signal, t => onText && onText(t)); }
+  catch (e) { if (e?.name === "AbortError") throw e; e = e || {}; e._local = true; throw e; }
 }
+async function aiErrorText(e){ return e?.message && !e.status && !e._local ? e.message : await diagnose(e); }
 
-const ERR = {
-  not_granted: "Доступ к Claude не разрешён. Разреши его в меню разрешений страницы и попробуй снова.",
-  rate_limited: "Слишком много запросов подряд. Подожди минуту.",
-  prompt_too_large: "Слишком длинный разговор. Начни новый разбор.",
-  session_expired: "Сессия истекла. Обнови страницу.",
-  sampling_disabled: "Запросы к Claude отключены для этого аккаунта.",
-  refused: "Claude отказался отвечать на этот запрос.",
+const Store = {
+  items: [], listeners: [],
+  onChange(fn){ this.listeners.push(fn); fn(this.items); },
+  load(){ this.items = (lsGet("cases") || []).sort((a,b) => b.updatedAt - a.updatedAt); this.listeners.forEach(f => f(this.items)); },
+  init(){ this.load(); },
+  async save(c){ c.updatedAt = Date.now(); const l = (lsGet("cases") || []).filter(x => x.id !== c.id); l.unshift({ id:c.id, q:c.q, turns:c.turns.slice(-12), createdAt:c.createdAt, updatedAt:c.updatedAt }); lsSet("cases", l.slice(0, 30)); this.load(); },
+  async remove(id){ lsSet("cases", (lsGet("cases") || []).filter(x => x.id !== id)); this.load(); },
 };
 
-async function run(){
-  if (busy || !sample) return;
-  busy = true; askBtn.disabled = followBtn.disabled = true; stopBtn.hidden = false;
-  resPanel.hidden = false; followWrap.hidden = true;
-  resEl.innerHTML = '<span class="thinking"><i></i><i></i><i></i></span> <span class="note">Читаю Свод и разбираю… обычно 10–60 секунд</span>';
-  setStatus("");
-  ctl = new AbortController();
-  try {
-    const rules = await loadRules();
-    const sys = INSTRUCTIONS + rules + "\n===== КОНЕЦ СВОДА =====\nДальше пользователь описывает ситуацию. Отвечай только на русском.";
-    const messages = [{ role:"system", content: sys }, ...turns];
-    resEl.innerHTML += '<div class="note">Модель читает Свод (~35 тыс. токенов). На локальном ПК первый ответ может идти 1–5 минут.</div>';
-    const text = await ask(messages, ctl.signal, t => { if (t) resEl.innerHTML = md(t); });
-    if (!text.trim()) throw { code:"empty" };
-    resEl.innerHTML = md(text);
-    turns.push({ role: "assistant", content: text });
-    saveHistory();
-    followWrap.hidden = false;
-  } catch (e) {
-    if (turns.length && turns[turns.length-1].role==="user") turns.pop();
-    if (e && e.text) resEl.innerHTML = md(e.text); else if (!turns.length) resPanel.hidden = true;
-    if (e?.name === "AbortError") setStatus("Остановлено.");
-    else if (e?.code === "rules") setStatus("Не удалось загрузить текст Свода. Обнови страницу.", true);
-    else if (e?.code === "empty") setStatus("Модель вернула пустой ответ. Скорее всего, не хватило контекста — увеличь «Контекст» в настройках.", true);
-    else { setStatus("Проверяю, в чём проблема…", true); diagnose(e).then(m => setStatus(m, true)); }
-    if (turns.length) followWrap.hidden = false;
-  } finally {
-    busy = false; askBtn.disabled = followBtn.disabled = false; stopBtn.hidden = true;
-  }
-}
-
-askBtn.onclick = () => {
-  const t = sit.value.trim();
-  if (!t) { setStatus("Опиши ситуацию.", true); sit.focus(); return; }
-  turns = [{ role: "user", content: t }];
-  run();
-};
-followBtn.onclick = () => {
-  const t = follow.value.trim();
-  if (!t || !turns.length) return;
-  turns.push({ role: "user", content: t });
-  follow.value = "";
-  run();
-};
-follow.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); followBtn.click(); } });
-stopBtn.onclick = () => ctl?.abort();
-
-$("copy").onclick = async () => {
-  const txt = resEl.innerText;
-  try { await navigator.clipboard.writeText(txt); setStatus("Скопировано."); }
-  catch (e) { const r = document.createRange(); r.selectNodeContents(resEl); const s = getSelection(); s.removeAllRanges(); s.addRange(r); setStatus("Текст выделен — скопируй вручную."); }
-};
-
-function saveHistory(){
-  const h = store("hist") || [];
-  const item = { q: turns[0].content, turns };
-  const idx = h.findIndex(x => x.q === item.q);
-  if (idx >= 0) h.splice(idx, 1);
-  h.unshift(item);
-  store("hist", h.slice(0, 15));
-  renderHistory();
-}
-function renderHistory(){
-  const h = store("hist") || [];
-  $("histWrap").hidden = !h.length;
-  const box = $("hist"); box.textContent = "";
-  h.forEach(item => {
-    const b = document.createElement("button");
-    b.type = "button"; b.textContent = item.q;
-    b.onclick = () => {
-      turns = item.turns.slice(); sit.value = item.q;
-      const last = [...turns].reverse().find(t => t.role === "assistant");
-      resPanel.hidden = false; followWrap.hidden = false; resEl.innerHTML = last ? md(last.content) : "";
-      resPanel.scrollIntoView({ behavior: "smooth", block: "start" });
-    };
-    box.appendChild(b);
-  });
-}
-renderHistory();
-
-/* ---------- Поиск по Своду (без ИИ) ---------- */
-const SYN = { "фк":"freekill","фрикил":"freekill","фрикилл":"freekill","фир":"fearrp","фирарп":"fearrp","лив":"leaverp","ливрп":"leaverp","краудрп":"crowdrp","фанрп":"funrp","джобабуз":"jobabuse","спавн":"спавн","рдм":"rdm","мрдм":"mrdm","дм":"rdm","нлр":"nlr","мг":"metagaming","метагейм":"metagaming","пг":"powergaming","павергейм":"powergaming","нрп":"nonrp","нонрп":"nonrp","фд":"freedamage","фридамаг":"freedamage","ск":"spawnkill","спавнкил":"spawnkill","гз":"greenzone","гринзон":"гринзон","ерп":"erp","афк":"afk","читы":"чит","дюп":"дюп","джоббан":"jobban","чс":"чс","кд":"кулдаун","мут":"mute","кик":"кик" };
-let ARTS = [];
-const norm = t => t.toLowerCase().replace(/ё/g,"е");
+/* ---------- Поиск по Своду ---------- */
+const SYN = { "фк":"freekill","фрикил":"freekill","фрикилл":"freekill","фир":"fearrp","фирарп":"fearrp","лив":"leaverp","ливрп":"leaverp","краудрп":"crowdrp","фанрп":"funrp","джобабуз":"jobabuse","рдм":"rdm","мрдм":"mrdm","дм":"rdm","нлр":"nlr","мг":"metagaming","метагейм":"metagaming","пг":"powergaming","павергейм":"powergaming","нрп":"nonrp","нонрп":"nonrp","фд":"freedamage","фридамаг":"freedamage","ск":"spawnkill","спавнкил":"spawnkill","гз":"гринзон","гринзон":"гринзон","ерп":"erp","афк":"afk","читы":"чит","джоббан":"jobban","кд":"кулдаун","мут":"mute" };
+const norm = t => String(t).toLowerCase().replace(/ё/g,"е");
 function stem(w){ const k = Object.keys(SYN).find(k => w === k || (k.length >= 4 && w.startsWith(k))); if (k) return SYN[k]; if (/^[\d.]+$/.test(w)) return w; if (w.length <= 3) return w; if (w.length === 4) return w.slice(0,3); return w.slice(0, Math.max(4, w.length-2)); }
 function parseRules(text){
   const arts = []; let sec = "", cur = null;
   for (const raw of text.split("\n")) {
-    const l = raw.trim(); if (!l) continue;
-    let m;
+    const l = raw.trim(); if (!l) continue; let m;
     if ((m = l.match(/^РАЗДЕЛ\s+(\S+)\.\s*(.*)$/i))) { sec = m[1] + ". " + m[2]; cur = null; continue; }
     if ((m = l.match(/^(\d+А?\.\d+)\.\s+(.+)$/))) { cur = { num:m[1], title:m[2], sec, paras:[], sanc:[] }; arts.push(cur); continue; }
     if (!cur) continue;
@@ -1134,22 +1112,36 @@ function parseRules(text){
   arts.forEach(a => { a.nt = norm(a.num + " " + a.title); a.np = a.paras.map(norm); });
   return arts;
 }
+function findArt(num){ const n = norm(String(num || "").replace(/^п\.?\s*/i,"").replace(/[a]/gi,"а").match(/\d+а?\.\d+/i)?.[0] || ""); return ARTS.find(a => norm(a.num) === n); }
 function hl(text, stems){
-  let h = esc(text);
-  if (!stems.length) return h;
+  const h = esc(text); if (!stems.length) return h;
   const re = new RegExp("(" + stems.map(s => s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|") + ")[а-яa-z0-9-]*", "gi");
   return h.replace(re, "<mark>$&</mark>");
 }
-function sancHtml(a, stems){
-  if (!a.sanc.length) return "";
-  return '<div class="sanc">' + a.sanc.map(t => hl(t, stems).replace(/^(Санкци[^:]*:)/i, "<b>$1</b>")).join("<br>") + "</div>";
-}
+function sancHtml(a, stems){ return a.sanc.length ? '<div class="sanc">' + a.sanc.map(t => hl(t, stems).replace(/^(Санкци[^:]*:)/i, "<b>$1</b>")).join("<br>") + "</div>" : ""; }
+function fullHtml(a, stems = []){ return a.paras.map(p => `<p>${hl(p, stems)}</p>`).join(""); }
+const explainCache = lsGet("explain") || {};
 function card(a, stems, snippetIdx){
   const d = document.createElement("article"); d.className = "art";
-  const snip = snippetIdx != null && !/^Санкци/i.test(a.paras[snippetIdx]) ? `<div class="snip">${hl(a.paras[snippetIdx].length > 260 ? a.paras[snippetIdx].slice(0,260) + "…" : a.paras[snippetIdx], stems)}</div>` : "";
-  d.innerHTML = `<button class="art-h" aria-expanded="false"><span class="num">${a.num}</span><span class="ttl">${hl(a.title, stems)}</span><span class="chev">›</span></button>${sancHtml(a, stems)}${snip}<div class="full" hidden>${a.paras.map(p => `<p>${hl(p, stems)}</p>`).join("")}</div>`;
-  const btn = d.querySelector(".art-h"), full = d.querySelector(".full");
+  const sp = snippetIdx != null && !/^Санкци/i.test(a.paras[snippetIdx]) ? a.paras[snippetIdx] : null;
+  d.innerHTML = `<button class="art-h" aria-expanded="false"><span class="num">${a.num}</span><span class="ttl">${hl(a.title, stems)}</span><span class="chev">›</span></button>${sancHtml(a, stems)}${sp ? `<div class="snip">${hl(sp.length > 260 ? sp.slice(0,260) + "…" : sp, stems)}</div>` : ""}
+  <div class="full" hidden>
+    <div class="row"><button class="btn small ex">Объяснить простыми словами</button></div>
+    <div class="explain" hidden></div>
+    ${fullHtml(a, stems)}
+  </div>`;
+  const btn = d.querySelector(".art-h"), full = d.querySelector(".full"), exBtn = d.querySelector(".ex"), exBox = d.querySelector(".explain");
   btn.onclick = () => { full.hidden = !full.hidden; d.classList.toggle("open", !full.hidden); btn.setAttribute("aria-expanded", String(!full.hidden)); };
+  const showEx = t => { exBox.hidden = false; exBox.innerHTML = md(t); };
+  if (explainCache[a.num]) { showEx(explainCache[a.num]); exBtn.hidden = true; }
+  exBtn.onclick = async () => {
+    exBtn.disabled = true; exBox.hidden = false; exBox.innerHTML = '<span class="thinking"><i></i><i></i><i></i></span>';
+    try {
+      const t = await callAI("Ты помогаешь администратору сервера Garry's Mod DarkRP CITY-67. Объясни пункт правил простыми словами для админа, по-русски, коротко markdown-списком: 1) что запрещено, 2) пример нарушения, 3) что НЕ является нарушением (если есть исключения), 4) какое наказание. Не выдумывай ничего сверх текста.\n\nПункт " + a.num + ". " + a.title + "\n" + a.paras.join("\n"),
+        [{ role:"user", content:"Объясни этот пункт." }], undefined, t => showEx(t), { quick:true });
+      explainCache[a.num] = t; lsSet("explain", explainCache); showEx(t); exBtn.hidden = true;
+    } catch (e) { exBox.textContent = await aiErrorText(e); exBtn.disabled = false; }
+  };
   return d;
 }
 function doSearch(){
@@ -1177,7 +1169,7 @@ function doSearch(){
     for (const s of stems) {
       let found = false;
       if (a.nt.includes(s)) { score += 6; found = true; }
-      a.np.forEach((p, i) => { if (p.includes(s)) { score += /^санкци/.test(p) ? 2 : 1; found = true; } });
+      a.np.forEach(p => { if (p.includes(s)) { score += /^санкци/.test(p) ? 2 : 1; found = true; } });
       if (found) hit++;
     }
     if (!hit) continue;
@@ -1192,7 +1184,156 @@ function doSearch(){
 let qTimer;
 $("q").addEventListener("input", () => { clearTimeout(qTimer); qTimer = setTimeout(doSearch, 120); });
 try { $("q").value = localStorage.getItem("q") || ""; } catch(e) {}
-loadRules().then(t => { ARTS = parseRules(t); doSearch(); }).catch(() => { $("results").innerHTML = '<div class="empty">Не удалось загрузить Свод. Обнови страницу.</div>'; });
+
+/* ---------- Разбор ситуации ---------- */
+EXAMPLES.forEach(t => {
+  const b = document.createElement("button");
+  b.className = "chip"; b.type = "button"; b.title = t;
+  b.textContent = t.length > 42 ? t.slice(0, 40) + "…" : t;
+  b.onclick = () => { sit.value = t; sit.focus(); };
+  $("examples").appendChild(b);
+});
+try { sit.value = localStorage.getItem("draft") || ""; } catch(e) {}
+sit.addEventListener("input", () => { try { localStorage.setItem("draft", sit.value); } catch(e) {} });
+
+function parseVerdict(text){
+  if (!text) return null;
+  const a = text.indexOf("{"), b = text.lastIndexOf("}");
+  if (a < 0 || b <= a) return null;
+  try { const j = JSON.parse(text.slice(a, b + 1)); return Array.isArray(j.players) ? j : null; } catch(e) { return null; }
+}
+const SEV = { none:"sev-none", warn:"sev-warn", ban:"sev-ban", perm:"sev-perm" };
+const sevCls = p => SEV[p.severity] || (/перм/i.test(p.verdict) ? "sev-perm" : /нет|не наруш/i.test(p.verdict) ? "sev-none" : /предупр/i.test(p.verdict) ? "sev-warn" : /бан/i.test(p.verdict) ? "sev-ban" : "sev-other");
+const blk = (k, v) => v ? `<div class="blk"><span class="k">${k}</span><span class="v">${esc(v)}</span></div>` : "";
+
+function renderVerdict(v){
+  const players = v.players || [];
+  let h = `<div class="verdict">`;
+  if (v.summary) h += `<p class="summary">${esc(v.summary)}</p>`;
+  h += `<div class="panel overview" style="padding:4px 14px">` + players.map(p => `<div class="ov"><span class="who">${esc(p.name)}</span><span class="pill ${sevCls(p)}">${esc(p.verdict || "—")}</span></div>`).join("") + `</div>`;
+  players.forEach(p => {
+    const vios = p.violations || [];
+    h += `<section class="player"><div class="player-h"><h3>${esc(p.name)}</h3><span class="pill ${sevCls(p)}">${esc(p.verdict || "—")}</span></div><div class="player-b">`;
+    if (!vios.length) h += `<div class="blk" style="padding:8px 0"><span class="k">Почему нет нарушения</span><span class="v">${esc(p.allowed || "Нарушений не найдено.")}</span></div>`;
+    vios.forEach((x, i) => {
+      const art = findArt(x.article);
+      h += `<details class="vio"${vios.length === 1 ? " open" : ""}><summary><span class="num">${esc(x.article)}${x.part ? " " + esc(x.part) : ""}</span><span class="ttl">${esc(x.title || art?.title || "")}</span><span class="give">${esc(x.assigned || "")}</span><span class="chev">›</span></summary>
+        <div class="vio-b">
+          ${art ? "" : `<div class="warnbox">Пункт ${esc(x.article)} не найден в Своде — ИИ мог ошибиться, проверь вручную.</div>`}
+          <div class="chain">
+            <span class="k">Причина</span><span class="v">${esc(x.reason || "—")}</span>
+            <span class="k">Нарушение</span><span class="v">${esc(x.meaning || art?.title || "—")}</span>
+            <span class="k">Санкция</span><span class="v">${esc(x.sanction || art?.sanc.join(" ") || "—")}</span>
+            <span class="k">Итог</span><span class="v res">${esc(x.assigned || "—")}</span>
+          </div>
+          ${art ? `<details class="fold"><summary><span class="chev">›</span>Полный текст пункта ${esc(art.num)} «${esc(art.title)}»</summary><div class="full">${fullHtml(art)}</div></details>` : ""}
+        </div></details>`;
+    });
+    if (vios.length && p.allowed) h += `<details class="fold"><summary><span class="chev">›</span>Что не является нарушением</summary><p class="v" style="margin:0 0 8px">${esc(p.allowed)}</p></details>`;
+    const ag = p.aggravating || [], mi = p.mitigating || [];
+    if (vios.length && (ag.length || mi.length || p.calculation)) {
+      h += `<details class="fold calc"><summary><span class="chev">›</span>Как посчитан срок</summary>
+        ${ag.length ? `<div class="blk"><span class="k">Отягчающие (п. 0.7.3)</span><ul>${ag.map(t => `<li class="plus">${esc(t)}</li>`).join("")}</ul></div>` : ""}
+        ${mi.length ? `<div class="blk"><span class="k">Смягчающие (п. 0.7.4)</span><ul>${mi.map(t => `<li class="minus">${esc(t)}</li>`).join("")}</ul></div>` : ""}
+        ${blk("Расчёт", p.calculation)}<div style="height:8px"></div></details>`;
+    }
+    h += `</div></section>`;
+  });
+  const miss = (v.missing || []).filter(Boolean);
+  if (miss.length) h += `<div class="missing"><h4>Чего не хватает для точного вердикта</h4><ul>${miss.map(t => `<li>${esc(t)}</li>`).join("")}</ul></div>`;
+  return h + `</div>`;
+}
+function verdictText(v){
+  const L = [];
+  (v.players || []).forEach(p => {
+    L.push(`${p.name} — ${p.verdict}`);
+    (p.violations || []).forEach(x => L.push(`  • п. ${x.article}${x.part ? " " + x.part : ""} ${x.title || ""}: ${x.reason || ""} → ${x.assigned || ""}`));
+  });
+  return L.join("\n");
+}
+function showCase(c){
+  current = c;
+  const last = [...c.turns].reverse().find(t => t.role === "assistant");
+  resPanel.hidden = false; followWrap.hidden = !last;
+  if (!last) { resEl.innerHTML = ""; return; }
+  const v = parseVerdict(last.content);
+  resEl.innerHTML = v ? renderVerdict(v) : `<div class="md">${md(last.content)}</div>`;
+}
+function progress(text){
+  const names = [...text.matchAll(/"name"\s*:\s*"([^"]+)"/g)].map(m => m[1]);
+  const arts = [...text.matchAll(/"article"\s*:\s*"([^"]+)"/g)].map(m => m[1]);
+  resEl.innerHTML = `<div class="note"><span class="thinking"><i></i><i></i><i></i></span> Пишу разбор…${names.length ? " Участники: " + esc(names.join(", ")) + "." : ""}${arts.length ? " Пункты: " + esc(arts.join(", ")) + "." : ""}</div>`;
+}
+
+async function run(){
+  if (busy || !current) return;
+  busy = true; askBtn.disabled = followBtn.disabled = true; stopBtn.hidden = false;
+  resPanel.hidden = false; followWrap.hidden = true; setStatus("");
+  resEl.innerHTML = '<div class="note"><span class="thinking"><i></i><i></i><i></i></span> Читаю Свод и разбираю ситуацию… </div>';
+  ctl = new AbortController();
+  try {
+    const rules = await loadRules();
+    const sys = INSTRUCTIONS + rules + "\n===== КОНЕЦ СВОДА =====\n\nСИТУАЦИЯ:";
+    const turns = current.turns.map((t, i) => i > 0 && t.role === "user" ? { role:"user", content: t.content + "\n\n(Верни полный обновлённый JSON по той же схеме.)" } : t);
+    const text = await callAI(sys, turns, ctl.signal, t => progress(t));
+    if (!text || !text.trim()) throw { message: "ИИ вернул пустой ответ. Попробуй ещё раз." };
+    current.turns.push({ role:"assistant", content: text });
+    showCase(current);
+    if (!parseVerdict(text)) setStatus("ИИ ответил не в формате карточек — показываю текстом.");
+    Store.save(current);
+  } catch (e) {
+    if (current.turns.length && current.turns[current.turns.length - 1].role === "user") current.turns.pop();
+    if (e?.name === "AbortError") setStatus("Остановлено.");
+    else { setStatus("Проверяю…", true); setStatus(await aiErrorText(e), true); }
+    if (current.turns.length) showCase(current); else resPanel.hidden = true;
+  } finally {
+    busy = false; askBtn.disabled = followBtn.disabled = false; stopBtn.hidden = true;
+  }
+}
+askBtn.onclick = () => {
+  const t = sit.value.trim();
+  if (!t) { setStatus("Опиши ситуацию.", true); sit.focus(); return; }
+  current = { id: "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), q: t, turns: [{ role:"user", content: t }], createdAt: Date.now() };
+  run();
+};
+followBtn.onclick = () => {
+  const t = follow.value.trim();
+  if (!t || !current) return;
+  current.turns.push({ role:"user", content: t }); follow.value = ""; run();
+};
+follow.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); followBtn.click(); } });
+stopBtn.onclick = () => ctl?.abort();
+$("copy").onclick = async () => {
+  const last = current && [...current.turns].reverse().find(t => t.role === "assistant");
+  const v = last && parseVerdict(last.content);
+  const txt = v ? verdictText(v) : resEl.innerText;
+  try { await navigator.clipboard.writeText(txt); setStatus("Вердикт скопирован."); }
+  catch (e) { const r = document.createRange(); r.selectNodeContents(resEl); const s = getSelection(); s.removeAllRanges(); s.addRange(r); setStatus("Текст выделен — скопируй вручную."); }
+};
+
+let pendingDel = null;
+Store.onChange(items => {
+  const box = $("hist"); box.textContent = "";
+  if (!items.length) { box.innerHTML = '<div class="note">Здесь появятся твои разборы.</div>'; return; }
+  items.forEach(c => {
+    const r = document.createElement("div"); r.className = "hrow";
+    const last = [...(c.turns || [])].reverse().find(t => t.role === "assistant");
+    const v = last && parseVerdict(last.content);
+    const sumLine = v ? (v.players || []).map(p => p.name + ": " + p.verdict).join(" · ") : "";
+    r.innerHTML = `<button class="open"><span class="q"></span><span class="when"></span></button><button class="del" aria-label="Удалить разбор">✕</button>`;
+    r.querySelector(".q").textContent = c.q;
+    r.querySelector(".when").textContent = fmtWhen(c.updatedAt) + (sumLine ? " · " + sumLine : "");
+    r.querySelector(".open").onclick = () => { sit.value = c.q; showCase({ ...c, turns: [...c.turns] }); resPanel.scrollIntoView({ behavior:"smooth", block:"start" }); };
+    const del = r.querySelector(".del");
+    del.onclick = () => {
+      if (pendingDel === c.id) { Store.remove(c.id); pendingDel = null; return; }
+      pendingDel = c.id; del.classList.add("confirm"); del.textContent = "Удалить?";
+      setTimeout(() => { if (pendingDel === c.id) { pendingDel = null; del.classList.remove("confirm"); del.textContent = "✕"; } }, 3000);
+    };
+    box.appendChild(r);
+  });
+});
+Store.init();
 
 function showTab(t){
   const ai = t === "ai";
@@ -1203,5 +1344,8 @@ function showTab(t){
 $("tabSearch").onclick = () => showTab("search");
 $("tabAi").onclick = () => showTab("ai");
 try { if (localStorage.getItem("tab") === "ai") showTab("ai"); } catch(e) {}
+
+loadRules().then(t => { ARTS = parseRules(t); doSearch(); if (current) showCase(current); })
+  .catch(() => { $("results").innerHTML = '<div class="empty">Не удалось загрузить Свод. Обнови страницу.</div>'; });
 </script>
 </body></html>
