@@ -115,17 +115,13 @@ mark{background:color-mix(in srgb,var(--accent) 28%,transparent);color:inherit;b
 
   <details class="panel settings" id="settings">
     <summary>Подключение к ИИ</summary>
+    <label class="field" style="margin-top:10px"><span>API-ключ — вставь любой: Gemini, Groq, OpenRouter, Mistral, DeepSeek, OpenAI. Сервис определится сам</span><input id="apiKey" type="password" autocomplete="off" placeholder="например, ключ из aistudio.google.com"></label>
     <div class="grid">
-      <label class="field"><span>Сервер</span>
-        <select id="provider">
-          <option value="gemini">Google Gemini (бесплатно, через интернет)</option>
-          <option value="ollama">Ollama (локально)</option>
-          <option value="openai">LM Studio / OpenAI-совместимый API</option>
-        </select></label>
+      <label class="field"><span>Сервис</span>
+        <select id="provider"></select></label>
       <label class="field"><span>Адрес</span><input id="baseUrl"></label>
       <label class="field"><span>Модель</span><input id="model" list="models" placeholder="qwen3:14b"><datalist id="models"></datalist></label>
       <label class="field" id="ctxField"><span>Контекст, токенов (Ollama)</span><input id="ctx" type="number" step="1024" min="8192"></label>
-      <label class="field"><span>API-ключ</span><input id="apiKey" type="password" autocomplete="off" placeholder="для Gemini — ключ из aistudio.google.com"></label>
     </div>
     <div class="row"><button class="btn" id="test" type="button">Проверить подключение</button></div>
     <div class="status" id="testStatus"></div>
@@ -865,36 +861,97 @@ sit.addEventListener("input", () => { try{ localStorage.setItem("draft", sit.val
 
 async function loadRules(){ return RULES; }
 
-const S = Object.assign({ provider:"gemini", baseUrl:"https://generativelanguage.googleapis.com/v1beta/openai", model:"gemini-3.8-flash", ctx:49152, apiKey:"" }, store("cfg") || {});
-const DEF_URL = { gemini:"https://generativelanguage.googleapis.com/v1beta/openai", ollama:"http://localhost:11434", openai:"http://localhost:1234/v1" };
-const DEF_MODEL = { gemini:"gemini-3.8-flash", ollama:"qwen3:14b", openai:"" };
-["provider","baseUrl","model","ctx","apiKey"].forEach(k => { $(k).value = S[k]; $(k).addEventListener("change", () => { S[k] = k==="ctx" ? +$(k).value : $(k).value.trim(); if (k==="provider") { S.baseUrl = DEF_URL[S.provider]; $("baseUrl").value = S.baseUrl; S.model = DEF_MODEL[S.provider]; $("model").value = S.model; } $("ctxField").hidden = S.provider!=="ollama"; store("cfg", S); }); });
-$("ctxField").hidden = S.provider!=="ollama";
-if (!store("cfg")) $("settings").open = true;
-const base = () => S.baseUrl.replace(/\/+$/,"");
-const hdrs = () => Object.assign({"Content-Type":"application/json"}, S.apiKey ? {Authorization:"Bearer "+S.apiKey} : {});
-$("test").onclick = async () => {
-  const t = $("testStatus"); t.className="status"; t.textContent="Проверяю…";
-  try {
-    const r = await fetch(S.provider==="ollama" ? base()+"/api/tags" : base()+"/models", { headers: hdrs() });
-    if (!r.ok) throw new Error("HTTP "+r.status);
-    const j = await r.json();
-    const names = S.provider==="ollama" ? (j.models||[]).map(m=>m.name) : (j.data||[]).map(m=>m.id);
-    $("models").innerHTML = names.map(n=>`<option value="${esc(n)}">`).join("");
-    t.textContent = names.length ? "Подключено. Модели: " + names.join(", ") : "Подключено, но моделей нет — скачай модель.";
-    if (names.length && !names.includes(S.model)) t.textContent += ". Модели «"+S.model+"» нет в списке!";
-  } catch(e) { t.className="status err"; t.textContent = (S.provider==="gemini" ? "Gemini не ответил. Проверь API-ключ и интернет." : "Нет связи с "+base()+". Сервер запущен? Для Ollama нужен OLLAMA_ORIGINS=*, для LM Studio — включить CORS.") + " ("+e.message+")"; }
+const PROV = {
+  gemini:     { name:"Google Gemini", url:"https://generativelanguage.googleapis.com/v1beta/openai", pref:["gemini-3.6-flash","gemini-3.5-flash","gemini-3.8-flash","gemini-3.7-flash","gemini-flash-latest","gemini-3.5-flash-lite","gemini-3.1-flash-lite","gemini-flash-lite-latest"] },
+  groq:       { name:"Groq", url:"https://api.groq.com/openai/v1", pref:["openai/gpt-oss-120b","llama-3.3-70b-versatile","qwen","llama"] },
+  openrouter: { name:"OpenRouter", url:"https://openrouter.ai/api/v1", pref:[":free"] },
+  mistral:    { name:"Mistral", url:"https://api.mistral.ai/v1", pref:["mistral-medium-latest","mistral-small-latest","mistral-large-latest"] },
+  deepseek:   { name:"DeepSeek", url:"https://api.deepseek.com/v1", pref:["deepseek-chat"] },
+  openai:     { name:"OpenAI", url:"https://api.openai.com/v1", pref:["mini","gpt"] },
+  ollama:     { name:"Ollama (на этом ПК)", url:"http://localhost:11434", pref:["qwen3","qwen","gemma","llama"] },
+  custom:     { name:"LM Studio / свой адрес", url:"http://localhost:1234/v1", pref:[] },
 };
+function guessProviders(key){
+  if (!key) return ["ollama","custom"];
+  if (/^(AIza|AQ\.)/.test(key)) return ["gemini"];
+  if (/^gsk_/.test(key)) return ["groq"];
+  if (/^sk-or-/.test(key)) return ["openrouter"];
+  if (/^sk-ant-/.test(key)) return [];
+  if (/^sk-/.test(key)) return ["openai","deepseek"];
+  return ["mistral","gemini","groq","openrouter","deepseek","openai"];
+}
+const S = Object.assign({ provider:"gemini", baseUrl:PROV.gemini.url, model:"gemini-3.6-flash", ctx:49152, apiKey:"", models:[] }, store("cfg") || {});
+if (S.provider === "gemini" && (!S.model || S.model === "gemini-3.8-flash")) S.model = "gemini-3.6-flash";
+const sel = $("provider");
+sel.innerHTML = Object.entries(PROV).map(([k,v]) => `<option value="${k}">${v.name}</option>`).join("");
+const save = () => store("cfg", S);
+function fill(){ ["provider","baseUrl","model","ctx","apiKey"].forEach(k => { $(k).value = S[k] ?? ""; }); $("ctxField").hidden = S.provider!=="ollama"; $("models").innerHTML = (S.models||[]).map(n=>`<option value="${esc(n)}">`).join(""); }
+fill();
+["baseUrl","model","ctx"].forEach(k => $(k).addEventListener("change", () => { S[k] = k==="ctx" ? +$(k).value : $(k).value.trim(); save(); }));
+sel.addEventListener("change", () => { S.provider = sel.value; S.baseUrl = PROV[S.provider].url; S.model = ""; S.models = []; fill(); save(); });
+$("apiKey").addEventListener("input", () => { S.apiKey = $("apiKey").value.replace(/\s+/g,""); save(); clearTimeout(window._kt); window._kt = setTimeout(() => connect(true), 600); });
+if (!S.apiKey && S.provider !== "ollama" && S.provider !== "custom") $("settings").open = true;
 
-async function ask(messages, signal, onText){
+const base = () => S.baseUrl.replace(/\/+$/,"");
+const hdrs = (prov = S.provider) => Object.assign({"Content-Type":"application/json"}, S.apiKey && prov !== "ollama" ? {Authorization:"Bearer "+S.apiKey} : {});
+function pickModel(prov, names, all){
+  for (const p of PROV[prov].pref) {
+    const exact = names.find(n => n === p); if (exact) return exact;
+    if (prov === "openrouter" && p === ":free") { const f = (all||[]).filter(m => m.id.endsWith(":free") && (m.context_length||0) >= 64000).sort((a,b)=>(b.context_length||0)-(a.context_length||0)); if (f[0]) return f[0].id; }
+    const part = names.find(n => n.includes(p)); if (part) return part;
+  }
+  return names[0] || "";
+}
+async function listModels(prov, url){
+  const r = await fetch(prov==="ollama" ? url+"/api/tags" : url+"/models", { headers: hdrs(prov) });
+  if (!r.ok) throw { status:r.status, message: await r.text().catch(()=> "") };
+  const j = await r.json();
+  const all = prov==="ollama" ? (j.models||[]).map(m=>({id:m.name})) : (j.data||[]).map(m=>({...m, id:String(m.id).replace(/^models\//,"")}));
+  return { names: all.map(m=>m.id).filter(n => !/(tts|image|embed|transcribe|lyria|whisper|audio|guard|banana|omni)/i.test(n)), all };
+}
+async function connect(auto){
+  const t = $("testStatus"); t.className = "status"; 
+  const key = S.apiKey;
+  let cands = auto ? guessProviders(key) : [S.provider];
+  if (auto && /^sk-ant-/.test(key)) { t.className="status err"; t.textContent = "Это ключ Anthropic (Claude). Для Claude пользуйся ссылкой на claude.ai — там ключ не нужен."; return; }
+  if (!cands.length) return;
+  t.textContent = auto ? "Определяю, от какого сервиса ключ…" : "Проверяю…";
+  let lastErr = null;
+  for (const prov of cands) {
+    const url = (!auto || prov === S.provider) ? base() : PROV[prov].url;
+    try {
+      const { names, all } = await listModels(prov, url);
+      S.provider = prov; S.baseUrl = url; S.models = names;
+      if (!names.includes(S.model)) S.model = pickModel(prov, names, all);
+      save(); fill();
+      t.textContent = `Подключено: ${PROV[prov].name}. Модель: ${S.model || "—"}` + (names.length ? ` (доступно моделей: ${names.length})` : ". Моделей нет — скачай модель.");
+      if (prov === "groq") t.textContent += ". Внимание: у бесплатного Groq маленький лимит токенов в минуту — Свод может не влезть.";
+      return true;
+    } catch (e) { lastErr = e; }
+  }
+  t.className = "status err";
+  t.textContent = explain(lastErr, true);
+}
+function explain(e, conn){
+  const st = e?.status, m = String(e?.message || "");
+  if (st === 400 && /api key/i.test(m) || st === 401 || st === 403) return "Ключ не подошёл (" + st + "). Проверь, что скопирован целиком, без пробелов, и выбран правильный сервис.";
+  if (st === 429) return "Лимит бесплатных запросов исчерпан. Подожди минуту (или до завтра) либо выбери другую модель.";
+  if (st === 503 || st === 500) return "Модель сейчас перегружена. Выбери другую модель из списка или попробуй позже.";
+  if (st === 404) return "Модель не найдена. Нажми «Проверить подключение», чтобы выбрать доступную.";
+  if (st === 413 || /context|too long|tokens/i.test(m)) return "Свод не влезает в лимит этой модели. Выбери модель с большим контекстом (лучше Gemini).";
+  if (st) return "Ошибка " + st + ": " + m.slice(0, 200);
+  return (S.provider==="ollama"||S.provider==="custom") ? "Нет связи с " + base() + ". Сервер запущен? Для Ollama нужен OLLAMA_ORIGINS=*, для LM Studio — включить CORS." : "Нет связи с сервисом. Проверь интернет.";
+}
+$("test").onclick = () => connect(!!S.apiKey && guessProviders(S.apiKey).length > 0 && !guessProviders(S.apiKey).includes(S.provider) ? true : false);
+
+async function askOnce(model, messages, signal, onText){
   let text = "";
-  const r = await fetch(S.provider==="ollama" ? base()+"/api/chat" : base()+"/chat/completions", {
+  const ol = S.provider === "ollama";
+  const r = await fetch(ol ? base()+"/api/chat" : base()+"/chat/completions", {
     method:"POST", headers: hdrs(), signal,
-    body: JSON.stringify(S.provider==="ollama"
-      ? { model:S.model, messages, stream:true, options:{ num_ctx:S.ctx, temperature:0.2 } }
-      : { model:S.model, messages, stream:true, temperature:0.2 })
+    body: JSON.stringify(ol ? { model, messages, stream:true, options:{ num_ctx:S.ctx, temperature:0.2 } } : { model, messages, stream:true, temperature:0.2 })
   });
-  if (!r.ok) { let m = ""; try { m = (await r.text()).slice(0,300); } catch(e){} throw { code:"http", message:"HTTP "+r.status+" "+m }; }
+  if (!r.ok) { let m = ""; try { m = (await r.text()).slice(0,400); } catch(e){} throw { code:"http", status:r.status, message:m }; }
   const rd = r.body.getReader(), dec = new TextDecoder(); let buf = "";
   for (;;) {
     const { value, done } = await rd.read(); if (done) break;
@@ -903,14 +960,31 @@ async function ask(messages, signal, onText){
     while ((i = buf.indexOf("\n")) >= 0) {
       let line = buf.slice(0,i).trim(); buf = buf.slice(i+1);
       if (!line) continue;
-      if (S.provider!=="ollama") { if (!line.startsWith("data:")) continue; line = line.slice(5).trim(); if (line==="[DONE]") continue; }
+      if (!ol) { if (!line.startsWith("data:")) continue; line = line.slice(5).trim(); if (line==="[DONE]") continue; }
       let j; try { j = JSON.parse(line); } catch(e) { continue; }
-      if (j.error) throw { code:"http", message: typeof j.error==="string" ? j.error : JSON.stringify(j.error) };
-      const d = S.provider==="ollama" ? j.message?.content : j.choices?.[0]?.delta?.content;
+      if (j.error) throw { code:"http", status: j.error.code || 0, message: typeof j.error==="string" ? j.error : (j.error.message || JSON.stringify(j.error)) };
+      const d = ol ? j.message?.content : j.choices?.[0]?.delta?.content;
       if (d) { text += d; onText(stripThink(text)); }
     }
   }
   return stripThink(text);
+}
+async function ask(messages, signal, onText){
+  const order = [S.model, ...((S.provider==="gemini" ? PROV.gemini.pref : []).filter(m => m !== S.model && (!S.models?.length || S.models.includes(m))))].filter(Boolean);
+  let err;
+  for (const model of order) {
+    try {
+      const out = await askOnce(model, messages, signal, onText);
+      if (model !== S.model) setStatus("Ответила модель " + model + " (выбранная была перегружена).");
+      return out;
+    } catch (e) {
+      if (e?.name === "AbortError") throw e;
+      err = e;
+      if (!(e?.status === 503 || e?.status === 500 || e?.status === 404 || e?.status === 429)) break;
+      resEl.innerHTML = '<span class="note">Модель ' + esc(model) + " занята, пробую другую…</span>";
+    }
+  }
+  throw err;
 }
 function stripThink(t){ return t.replace(/<think>[\s\S]*?(<\/think>|$)/g,"").trimStart(); }
 
@@ -925,7 +999,7 @@ function md(src){
     const l = raw.trimEnd();
     let m;
     if (!l.trim()) { close(); continue; }
-    if ((m = l.match(/^#{1,3}\s+(.*)/))) { close(); out.push(`<h3>${inline(m[1])}</h3>`); continue; }
+    if ((m = l.match(/^#{1,6}\s+(.*)/))) { close(); out.push(`<h3>${inline(m[1])}</h3>`); continue; }
     if (/^(-{3,}|\*{3,})$/.test(l.trim())) { close(); out.push("<hr>"); continue; }
     if ((m = l.match(/^\s*[-*•]\s+(.*)/))) { if (list !== "ul") { close(); out.push("<ul>"); list = "ul"; } out.push(`<li>${inline(m[1])}</li>`); continue; }
     if ((m = l.match(/^\s*\d+[.)]\s+(.*)/))) { if (list !== "ol") { close(); out.push("<ol>"); list = "ol"; } out.push(`<li>${inline(m[1])}</li>`); continue; }
@@ -967,7 +1041,7 @@ async function run(){
     if (e?.name === "AbortError") setStatus("Остановлено.");
     else if (e?.code === "rules") setStatus("Не удалось загрузить текст Свода. Обнови страницу.", true);
     else if (e?.code === "empty") setStatus("Модель вернула пустой ответ. Скорее всего, не хватило контекста — увеличь «Контекст» в настройках.", true);
-    else if (e?.code === "http") setStatus("Ошибка сервера ИИ: " + e.message, true);
+    else if (e?.code === "http") setStatus(explain(e), true);
     else setStatus("Нет связи с сервером ИИ (" + base() + "). Проверь настройки подключения.", true);
     if (turns.length) followWrap.hidden = false;
   } finally {
