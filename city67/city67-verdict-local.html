@@ -5,10 +5,12 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&family=Unbounded:wght@600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
-/* Layout: app shell — compact header with the rulebook chip, three views (search / case / settings), bottom tab bar on every width */
+/* Layout: app shell — compact header with document chips, three views (search / case / settings), bottom tab bar.
+   Two rulebooks: server rules (green, admin) and city code (blue, police). */
 :root{
   --bg:#eef0ec; --surface:#fbfcfa; --raised:#ffffff; --ink:#16201b; --muted:#5d6b63; --line:#d3d9d4;
   --accent:#1f6b4f; --accent-ink:#ffffff; --warn:#a4541b; --soft:#e3ebe6;
+  --police:#2a5a9e; --police-soft:#e3eaf5;
   --ok:#2e7d4f; --ban:#b3471d; --perm:#8f1d2c; --caution:#93690a;
   --display:"Unbounded","Arial Black",system-ui,sans-serif;
   --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -18,22 +20,25 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0f1411; --surface:#161d19; --raised:#1b241f; --ink:#e3ebe6; --muted:#97a69d; --line:#2a3530;
   --accent:#4fbf8f; --accent-ink:#08130e; --warn:#e39a5f; --soft:#1e2b24;
+  --police:#7fa8e8; --police-soft:#1b2433;
   --ok:#5cc98c; --ban:#f08a5d; --perm:#ff7b8c; --caution:#e8c15a; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0f1411; --surface:#161d19; --raised:#1b241f; --ink:#e3ebe6; --muted:#97a69d; --line:#2a3530;
   --accent:#4fbf8f; --accent-ink:#08130e; --warn:#e39a5f; --soft:#1e2b24;
+  --police:#7fa8e8; --police-soft:#1b2433;
   --ok:#5cc98c; --ban:#f08a5d; --perm:#ff7b8c; --caution:#e8c15a; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
   padding-block:14px calc(var(--navh) + 28px + env(safe-area-inset-bottom,0px))}
 .wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
-.top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap}
 h1{font-family:var(--display);font-size:clamp(22px,6.4vw,30px);line-height:1.1;margin:0}
 h1 span{color:var(--accent)}
+.docchips{display:flex;gap:6px;flex-wrap:wrap}
 .chipbtn{font:inherit;font-size:12.5px;display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:5px 11px;cursor:pointer}
 .chipbtn b{color:var(--ink);font-weight:600}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:0 0 auto}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:0 0 auto;display:inline-block}
 .dot.on{background:var(--ok)} .dot.warn{background:var(--caution)}
 .tag{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .view{display:flex;flex-direction:column;gap:12px;min-width:0}
@@ -46,6 +51,10 @@ textarea:focus-visible,button:focus-visible,summary:focus-visible,input:focus-vi
 .chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
 .chip{flex:0 0 auto;font:inherit;font-size:13px;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:999px;padding:6px 12px;cursor:pointer}
 .chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.chip.pol[aria-pressed="true"]{background:var(--police);border-color:var(--police);color:#fff}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--soft);border-radius:10px;padding:3px}
+.seg button{font:inherit;font-size:13px;font-weight:600;border:0;border-radius:8px;padding:8px 4px;background:transparent;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--raised);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .between{justify-content:space-between}
 .btn{font:inherit;font-weight:600;border-radius:10px;padding:11px 16px;cursor:pointer;border:1px solid var(--line);background:var(--raised);color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
@@ -78,13 +87,20 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .list{display:flex;flex-direction:column;gap:8px;min-width:0}
 .sec{font-family:var(--display);font-size:12.5px;letter-spacing:.02em;color:var(--muted);margin:12px 0 0;text-transform:uppercase}
 .art{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
-.art-h{display:flex;gap:10px;align-items:baseline;cursor:pointer;background:none;border:0;padding:0;font:inherit;color:inherit;text-align:left;width:100%}
-.num{font-family:var(--mono);font-size:13px;color:var(--accent);flex:0 0 auto;min-width:3.2em}
-.ttl{font-weight:600;flex:1;min-width:0;overflow-wrap:anywhere}
+.art.code{border-left:3px solid var(--police)}
+.art-h{display:flex;gap:8px;align-items:baseline;cursor:pointer;background:none;border:0;padding:0;font:inherit;color:inherit;text-align:left;width:100%}
+.doc{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.04em;border-radius:5px;padding:1px 5px;flex:0 0 auto;align-self:center}
+.doc.svod{background:var(--soft);color:var(--accent)} .doc.code{background:var(--police-soft);color:var(--police)}
+.num{font-family:var(--mono);font-size:13px;color:var(--accent);flex:0 0 auto;min-width:2.8em}
+.code .num,.num.code{color:var(--police)}
+.ttl{font-weight:600;flex:1;min-width:0;overflow-wrap:break-word;hyphens:auto}
 .chev{color:var(--muted);flex:0 0 auto;transition:transform .15s;display:inline-block}
 .art.open .chev{transform:rotate(90deg)}
 .sanc{font-size:14px;background:var(--soft);border-radius:8px;padding:7px 10px;overflow-wrap:anywhere}
 .sanc b{color:var(--warn);font-weight:600}
+.code .sanc{background:var(--police-soft)} .code .sanc b{color:var(--police)}
+.cls{display:flex;gap:6px;flex-wrap:wrap}
+.cl{font-size:12.5px;border:1px solid var(--police);color:var(--police);border-radius:999px;padding:2px 9px;white-space:nowrap}
 .snip{font-size:14px;color:var(--muted);overflow-wrap:anywhere}
 .full{font-size:14.5px;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:8px;overflow-wrap:anywhere}
 .full p{margin:0}
@@ -96,28 +112,36 @@ mark{background:color-mix(in srgb,var(--accent) 28%,transparent);color:inherit;b
 /* verdict */
 .verdict{display:flex;flex-direction:column;gap:12px}
 .summary{font-size:15px;margin:0}
-.ov{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.ov{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .ov:last-child{border-bottom:0}
 .ov .who{font-weight:600;min-width:0;overflow-wrap:anywhere}
-.pill{flex:0 0 auto;font-size:13px;font-weight:600;border-radius:999px;padding:4px 10px;border:1.5px solid currentColor;white-space:nowrap;max-width:60%;overflow:hidden;text-overflow:ellipsis}
-.sev-none{color:var(--ok)} .sev-warn{color:var(--caution)} .sev-ban{color:var(--ban)} .sev-perm{color:var(--perm)} .sev-other{color:var(--muted)}
+.pills{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.pill{flex:0 0 auto;font-size:13px;font-weight:600;border-radius:999px;padding:4px 10px;border:1.5px solid currentColor;max-width:100%;overflow-wrap:anywhere}
+.sev-none{color:var(--ok)} .sev-warn{color:var(--caution)} .sev-ban{color:var(--ban)} .sev-perm{color:var(--perm)} .sev-other{color:var(--muted)} .sev-pol{color:var(--police)}
 .player{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
-.player-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;background:var(--soft)}
+.player-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;background:var(--soft);flex-wrap:wrap}
 .player-h h3{font-family:var(--display);font-size:14.5px;margin:0;min-width:0;overflow-wrap:anywhere}
 .player-b{padding:4px 14px 10px;display:flex;flex-direction:column}
+.grp{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin:12px 0 0;padding-bottom:4px;border-bottom:2px solid var(--accent);color:var(--accent)}
+.grp.pol{border-color:var(--police);color:var(--police)}
 .vio{border-bottom:1px solid var(--line)}
-.vio>summary,.fold>summary{list-style:none;cursor:pointer;display:flex;gap:10px;align-items:baseline;padding:10px 0}
+.vio>summary,.fold>summary{list-style:none;cursor:pointer;display:flex;gap:8px;align-items:baseline;padding:10px 0}
 .vio>summary::-webkit-details-marker,.fold>summary::-webkit-details-marker{display:none}
-.vio>summary .give{font-size:13px;color:var(--ban);font-weight:600;flex:0 0 auto;max-width:40%;text-align:right}
+.vio>summary .give{font-size:13px;color:var(--ban);font-weight:600;flex:0 0 auto;max-width:42%;text-align:right}
+.vio.charge>summary .give{color:var(--police)}
 .vio[open]>summary .chev,.fold[open]>summary .chev{transform:rotate(90deg)}
 .vio-b{display:flex;flex-direction:column;gap:8px;padding:0 0 12px}
 .chain{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:start;background:var(--soft);border-radius:10px;padding:10px 12px}
+.charge .chain{background:var(--police-soft)}
 .chain .k{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding-top:3px;white-space:nowrap}
 .chain .v{font-size:15px;min-width:0;overflow-wrap:anywhere}
 .chain .v.res{font-weight:600;color:var(--ban)}
+.charge .chain .v.res{color:var(--police)}
+.total{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--police-soft);color:var(--police);border-radius:10px;padding:9px 12px;margin-top:8px;font-weight:600;font-size:14.5px}
 .fold{border-bottom:1px dashed var(--line)}
 .fold:last-child{border-bottom:0}
 .fold>summary{font-size:14px;font-weight:600;color:var(--accent);padding:9px 0}
+.charge .fold>summary{color:var(--police)}
 .fold .full{border-top:0;padding-top:0;padding-bottom:10px}
 .fold .inner{padding:0 0 10px;font-size:14.5px}
 .blk{display:flex;flex-direction:column;gap:2px;margin-bottom:6px}
@@ -142,11 +166,12 @@ mark{background:color-mix(in srgb,var(--accent) 28%,transparent);color:inherit;b
 .hrow .del.confirm{color:var(--warn);border-color:var(--warn)}
 
 /* settings */
+.docrow{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;background:var(--raised)}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:14px}
 .kv .k{color:var(--muted)}
 .kv .v{min-width:0;overflow-wrap:anywhere}
 .diff{display:flex;flex-direction:column;gap:6px;font-size:14px}
-.diff .grp{font-weight:600;margin-top:4px}
+.diff .g{font-weight:600;margin-top:4px}
 .diff .it{background:var(--soft);border-radius:8px;padding:7px 10px;overflow-wrap:anywhere}
 .diff .old{color:var(--muted);text-decoration:line-through}
 .diff .new{color:var(--accent);font-weight:600}
@@ -168,24 +193,28 @@ mark{background:color-mix(in srgb,var(--accent) 28%,transparent);color:inherit;b
 <div class="wrap">
   <div class="top">
     <h1>Вердикт <span>CITY-67</span></h1>
-    <button class="chipbtn" id="rulesChip" type="button"><span class="dot on" id="rulesDot"></span><span id="rulesChipText">Свод загружается…</span></button>
+    <div class="docchips" id="docChips"></div>
   </div>
 
   <!-- ПОИСК -->
   <section class="view" id="view-search">
     <div class="search">
-      <input id="q" type="search" placeholder="Поиск: фк, оскорбление, 1.5, рейд кулдаун" autocomplete="off" enterkeyhint="search" aria-label="Поиск по Своду">
+      <input id="q" type="search" placeholder="Поиск: фк, грабёж, 1.5, арест, ствол" autocomplete="off" enterkeyhint="search" aria-label="Поиск по правилам и кодексу">
+      <div class="chips" id="docFilter"></div>
       <div class="chips" id="secChips"></div>
       <div class="meta" id="qmeta"></div>
     </div>
-    <div class="list" id="results"><div class="empty">Загружаю Свод…</div></div>
+    <div class="list" id="results"><div class="empty">Загружаю документы…</div></div>
   </section>
 
   <!-- РАЗБОР -->
   <section class="view" id="view-case" hidden>
     <section class="panel">
       <div class="row between"><label for="situation">Опиши ситуацию</label><button class="btn small ghost" id="newCase" type="button">Новый разбор</button></div>
-      <textarea id="situation" placeholder="Кто, что сделал, при каких обстоятельствах, есть ли запись/логи, были ли раньше нарушения…"></textarea>
+      <div class="seg" id="modeSeg" role="group" aria-label="Что разбирать">
+        <button data-mode="both">Админ + полиция</button><button data-mode="svod">Только админ</button><button data-mode="code">Только полиция</button>
+      </div>
+      <textarea id="situation" placeholder="Кто, что сделал, где, при каких обстоятельствах, было ли оружие, есть ли запись/логи, были ли раньше нарушения…"></textarea>
       <div class="chips" id="examples"></div>
       <div class="row">
         <button class="btn primary" id="ask">Разобрать ситуацию</button>
@@ -201,7 +230,7 @@ mark{background:color-mix(in srgb,var(--accent) 28%,transparent);color:inherit;b
       </div>
       <div id="result"></div>
       <div class="followup" id="followWrap" hidden>
-        <textarea id="follow" placeholder="Уточнить: «а если у него это второй раз за неделю?»"></textarea>
+        <textarea id="follow" placeholder="Уточнить: «а если у него был пистолет?»"></textarea>
         <button class="btn primary" id="followBtn" style="flex:0 0 auto" aria-label="Отправить уточнение">→</button>
       </div>
     </section>
@@ -218,23 +247,23 @@ mark{background:color-mix(in srgb,var(--accent) 28%,transparent);color:inherit;b
   <!-- НАСТРОЙКИ -->
   <section class="view" id="view-settings" hidden>
     <section class="panel" id="rulesPanel">
-      <h2>Свод правил</h2>
-      <div class="kv" id="rulesInfo"></div>
+      <h2>Документы</h2>
+      <div class="list" id="docRows"></div>
       <div id="rulesEdit">
-        <div class="drop" id="drop">Перетащи сюда новый документ Свода (.docx или .txt)<br>или
-          <label class="btn small" style="margin-top:8px;cursor:pointer">Выбрать файл<input type="file" id="rulesFile" accept=".docx,.txt,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden></label>
+        <div class="drop" id="drop">Перетащи сюда новую версию документа — <b>.pdf</b> с вики, <b>.docx</b> или <b>.txt</b>.<br>Свод это или Кодекс, страница определит сама.<br>
+          <label class="btn small" style="margin-top:8px;cursor:pointer">Выбрать файл<input type="file" id="rulesFile" accept=".pdf,.docx,.txt,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden></label>
         </div>
         <div class="status" id="rulesStatus"></div>
+        <div class="row" id="pickDoc" hidden><span class="note">Какой это документ?</span><button class="btn small" data-doc="svod">Свод правил сервера</button><button class="btn small" data-doc="code">Муниципальный кодекс</button></div>
         <div id="rulesPreview" hidden>
           <div class="diff" id="rulesDiff"></div>
           <div class="row" style="margin-top:10px">
-            <button class="btn primary" id="rulesApply">Применить новый Свод</button>
+            <button class="btn primary" id="rulesApply">Применить</button>
             <button class="btn" id="rulesCancel">Отмена</button>
           </div>
         </div>
-        <div class="row" style="margin-top:8px"><button class="btn small ghost" id="rulesReset" hidden>Вернуть исходный Свод</button></div>
       </div>
-      <div class="note" id="rulesReadonly" hidden>Свод на этой странице обновляет её владелец.</div>
+      <div class="note" id="rulesReadonly" hidden>Документы на этой странице обновляет её владелец.</div>
     </section>
 
     <section class="panel" id="aiPanel">
@@ -255,10 +284,10 @@ mark{background:color-mix(in srgb,var(--accent) 28%,transparent);color:inherit;b
     <section class="panel">
       <h2>Синхронизация</h2>
       <div class="row"><span class="dot" id="syncDot"></span><span id="syncText">Только на этом устройстве</span></div>
-      <p class="note" style="margin:0" id="syncNote">Эта ПК-версия хранит историю и загруженный Свод только в этом браузере. Для синхронизации телефона и ПК пользуйся ссылкой на claude.ai.</p>
+      <p class="note" style="margin:0" id="syncNote">Эта ПК-версия хранит историю и загруженные документы только в этом браузере. Для синхронизации телефона и ПК пользуйся ссылкой на claude.ai.</p>
     </section>
 
-    <p class="note">Это подсказка, а не вердикт. Окончательное решение принимает администратор по доказательствам (п. 0.6, 9.3).</p>
+    <p class="note">Это подсказка, а не вердикт. Окончательное решение принимает администратор по доказательствам (Свод п. 0.6, 9.3), а в IC — офицер и суд по Кодексу.</p>
   </section>
 </div>
 
@@ -271,7 +300,7 @@ mark{background:color-mix(in srgb,var(--accent) 28%,transparent);color:inherit;b
 </nav>
 
 
-<script type="text/plain" id="rulesText">СВОД ПРАВИЛ СЕРВЕРА CITY-67
+<script type="text/plain" id="doc_svod">СВОД ПРАВИЛ СЕРВЕРА CITY-67
 РАЗДЕЛ 0. ОБЩИЕ ПОЛОЖЕНИЯ
 0.1. Область действия
 1. Настоящий Свод обязателен для всех лиц, взаимодействующих с сервером CITY-67: игроков, гостей, администрации сервера и лиц, действующих от их имени.
@@ -923,55 +952,535 @@ CITY-67 входит в zeta-collective. Правила читаются как 
 Последнее изменение документа: 17.10.2026
 Конец Свода правил CITY-67 (zeta-collective).
 </script>
+<script type="text/plain" id="doc_code">МУНИЦИПАЛЬНЫЙ КОДЕКС ГОРОДА ПОРТЛЕНД
+Штат Орегон, Соединённые Штаты Америки
+Официальное наименование: Municipal Code of the City of Portland
+Краткое обозначение: Кодекс Портленда / МК Портленд
+Юрисдикция: вся территория муниципалитета Портленд
+Применяемое право штата: Oregon Revised Statutes (ORS)
+Городские нормы: Portland City Code, в том числе Title 14 — Public Order and Police
+О наименовании и административном статусе города
+1. City-67 является кодовым наименованием города Портленд, расположенного в штате Орегон.
+2. Административным центром штата Орегон является город Сейлем. Портленд (City-67) к столице штата отношения не имеет и является самостоятельным городом со своими органами власти, бюджетом и муниципальной полицией.
+3. Муниципалитет Портленд состоит из четырёх частей (четыре городских округа). Настоящий Кодекс действует единообразно на всей территории города во всех его частях, если Советом города либо мэром на законном основании не введён особый режим для отдельной части.
+В тексте Кодекса город именуется Портленд. Кодовое обозначение City-67 применяется только для однозначной идентификации муниципалитета.
+РАЗДЕЛ 0. ОБЩИЕ ПОЛОЖЕНИЯ
+0.1. Область действия
+1. Настоящий Кодекс устанавливает правопорядок на территории Портленда, определяет составы правонарушений, меры ответственности, полномочия Бюро полиции Портленда (Portland Police Bureau) и пределы нормотворчества мэра и Совета города.
+2. Кодекс обязателен для всех лиц, находящихся на территории города, независимо от гражданства, рода занятий, принадлежности к организации либо статуса приезжего.
+3. На территории Портленда применяются также нормы права штата Орегон (ORS) в части, не противоречащей настоящему Кодексу и специальным городским постановлениям.
+4. Незнание закона не освобождает от ответственности.
+5. Пребывание на территории города означает обязанность соблюдать настоящий Кодекс.
+0.2. Термины и определения
+Лицо — Физическое лицо, находящееся на территории Портленда
+Мирное лицо — Лицо, не совершающее в данный момент преступления и не оказывающее активного сопротивления законному задержанию
+Должностное лицо — Сотрудник Бюро полиции Портленда при исполнении; мэр; член Совета города; иное лицо, наделённое публичными полномочиями настоящим Кодексом либо постановлением города
+Офицер — Сотрудник Бюро полиции Портленда, находящийся на службе
+Часть города / округ — Одна из четырёх частей муниципалитета Портленд
+Физический вред — Причинение вреда здоровью, не достигающее тяжкого
+Тяжкий вред — Вред здоровью, влекущий существенную утрату трудоспособности либо создающий явную угрозу жизни
+Смерть — Гибель человека в результате деяния
+Оружие — Огнестрельное, холодное, взрывное либо иное средство, конструктивно предназначенное для причинения вреда
+Смертоносное оружие — Огнестрельное оружие, взрывчатые вещества, гранаты и иные средства повышенной опасности
+Общественное место — Территория, доступная неопределённому кругу лиц: улицы, площади, остановки, рынки, магазины открытого доступа, заведения общественного питания, здания мэрии, полицейские участки и прилегающие площади
+Частная собственность — Помещение, участок либо транспорт, принадлежащие лицу на законном основании
+Задержание — Кратковременное ограничение свободы для установления личности, проверки либо предотвращения продолжения преступления
+Арест — Формальное лишение свободы с последующим содержанием под стражей либо назначением штрафа
+Вероятная причина — Совокупность фактов и обстоятельств, достаточных для разумного вывода офицера о том, что лицо совершило либо совершает преступление
+Обоснованное подозрение — Конкретные наблюдаемые факты, позволяющие кратко остановить и опросить лицо
+Необходимая оборона — Правомерное причинение вреда для защиты себя либо другого лица от непосредственного противоправного нападения
+Крайняя необходимость — Причинение меньшего вреда для предотвращения большего неизбежного вреда при отсутствии иных разумных средств
+Покушение — Действия, непосредственно направленные на совершение преступления, не доведённые до конца по независящим от лица обстоятельствам
+Соучастие — Организация, подстрекательство, пособничество либо укрытие
+Рецидив — Повторное привлечение к ответственности по тому же либо однородному составу: для проступков — в течение одного года; для преступлений — в течение пяти лет с момента отбытия предыдущего наказания
+0.3. Иерархия норм
+1. Конституция США и законы Соединённых Штатов Америки — в пределах федеральной компетенции.
+2. Конституция и законы штата Орегон (ORS).
+3. Настоящий Муниципальный кодекс Портленда.
+4. Постановления Совета города и указы мэра, не противоречащие п. 1–3.
+5. Специальная норма имеет приоритет над общей при регулировании того же предмета.
+6. Распоряжения отдельной части города не могут отменять общие нормы Кодекса, кроме временно введенных чрезвычайных мер по Разделу 11.
+0.4. Толкование
+1. Исключения толкуются узко.
+2. «Может», «вправе», «допускается» означают право, а не обязанность.
+3. «Обязан», «запрещается», «не вправе» — императивные нормы.
+4. Отсутствие примера не означает дозволенность деяния, если оно подпадает под общий запрет.
+5. При неустранимом сомнении в квалификации применяется менее тяжкий состав.
+0.5. Вина, покушение, соучастие
+1. Ответственность наступает за умышленные деяния. За грубо неосторожные — если это прямо указано в статье.
+2. Покушение наказывается в пределах санкции соответствующего состава с применением нижней либо средней части диапазона.
+3. Соучастник несёт ответственность по тому же составу, что и исполнитель.
+4. Необходимая оборона и крайняя необходимость исключают противоправность при соразмерности вреда угрозе.
+5. Законные действия офицера при исполнении полномочий не образуют преступления.
+0.6. Классификация правонарушений
+*(ORS 161.605, 161.615, 161.625, 161.635)*
+V — Нарушение (Violation) — Как правило, без лишения свободы; арест допускается лишь если прямо указан в статье — 500$–5 000$ (если статьёй не установлено иное)
+M-C — Проступок класса C — до 30 суток — до 1 250$
+M-B — Проступок класса B — до 6 месяцев — до 2 500$
+M-A — Проступок класса A — до 364 суток — до 6 250$
+F-C — Преступление класса C — до 5 лет — до 125 000$
+F-B — Преступление класса B — до 10 лет — до 250 000$
+F-A — Преступление класса A — до 20 лет — до 375 000$
+AF — Особо тяжкое (включая квалифицированное убийство) — пожизненное заключение, в том числе без права на условно-досрочное освобождение, либо иной максимальный срок по ORS / приговору суда — по решению суда; передача дела окружному прокурору
+Примечание.
+1. Указаны максимумы по праву штата Орегон. Конкретный срок и штраф внутри максимума назначает судья, а при упрощённом порядке — офицер Бюро полиции в пределах полномочий и класса статьи.
+2. Выход за максимум класса запрещён, кроме случаев, прямо указанных в статье, либо при сложении по п. 0.7.
+3. Для отдельных составов (в т.ч. Measure 11) законом штата могут быть установлены обязательные минимальные сроки — они имеют приоритет над общим диапазоном класса.
+OOC. Перевод класса в игровой арест
+В IC озвучивается срок по таблице выше (сутки / месяцы / годы).
+В меню ареста ставится минутаж по настоящей таблице.
+V — 0–3 (обычно только штраф)
+M-C — 3–6
+M-B — 5–10
+M-A — 8–15
+F-C — 12–20
+F-B — 18–25
+F-A — 25–35
+AF — максимум тюрьмы (ориентир 35–45)
+Обычный случай — середина диапазона. Отягчение — вверх, смягчение — вниз. Выше потолка класса ставить нельзя.
+0.7. Назначение наказания
+1. При нескольких составах в одном эпизоде сроки суммируются, но суммарный срок не может превысить максимум наиболее тяжкого класса более чем в три раза, если ни один состав не предусматривает пожизненного заключения. При наличии состава AF применяется санкция AF.
+2. Отягчающие обстоятельства:
+- применение оружия;
+- причинение вреда должностному лицу;
+- совершение в общественном месте при скоплении людей;
+- заранее обдуманный характер;
+- рецидив;
+- несколько потерпевших;
+- использование служебного положения.
+3. Смягчающие обстоятельства:
+- добровольная явка и признание;
+- возмещение ущерба до ареста;
+- вынужденный характер при доказанной провокации;
+- первое привлечение при малозначительности деяния.
+4. Штраф может заменять арест только по составам V и M-C, если деяние прекращено, ущерб возмещён и оружие не применялось.
+5. Конфискация орудий преступления, запрещённых веществ и незаконно добытого имущества допускается при составах M-A и выше, а также при оружейных и наркотических составах любого класса.
+0.8. Применение силы офицером
+1. Офицер вправе применять силу, соразмерную сопротивлению и угрозе.
+2. Смертоносная сила допускается только при непосредственной угрозе смерти либо тяжкого вреда офицеру или третьим лицам, либо для пресечения продолжающегося особо тяжкого насильственного преступления, если иные средства заведомо недостаточны.
+3. Стрельба по убегающему лицу, не создающему непосредственной смертельной угрозы, запрещена.
+4. Превышение полномочий квалифицируется по настоящему Кодексу и влечёт уголовную, дисциплинарную и гражданскую ответственность.
+РАЗДЕЛ 1. ПРЕСТУПЛЕНИЯ ПРОТИВ ЖИЗНИ И ЗДОРОВЬЯ
+*(ORS Chapter 163)*
+1.1. Убийство (Murder)
+1. Умышленное причинение смерти другому человеку.
+2. Квалифицирующие признаки (AF):
+- убийство должностного лица при исполнении;
+- убийство при грабеже, разбое, похищении, поджоге либо взрыве;
+- убийство двух и более лиц;
+- убийство по найму;
+- убийство с особой жестокостью либо публичной демонстрацией.
+3. Без квалифицирующих признаков — F-A.
+Санкция: по классу; конфискация оружия.
+1.2. Неосторожное причинение смерти (Manslaughter / Criminally Negligent Homicide)
+1. Причинение смерти по грубой неосторожности либо при заведомо опасном поведении без прямого умысла на убийство.
+2. Включает смерть вследствие опасного вождения, обращения с оружием, взрывчаткой либо опасным оборудованием.
+Класс: F-B; при нескольких погибших либо опьянении — F-A.
+1.3. Нападение (Assault)
+1.3.1. Assault IV — лёгкий вред
+Умышленное причинение физического вреда без оружия и без тяжких последствий.
+Класс: M-A.
+1.3.2. Assault III
+Вред с использованием подручного предмета; либо вред должностному лицу; либо вред при участии двух и более нападающих.
+Класс: F-C.
+1.3.3. Assault II — тяжкий вред
+Умышленное причинение тяжкого вреда; либо вред смертоносным оружием без цели убийства.
+Класс: F-B.
+1.3.4. Assault I
+Умышленное причинение тяжкого вреда смертоносным оружием; либо вред с явной угрозой жизни.
+Класс: F-A.
+1.4. Угроза тяжким вредом (Menacing)
+Умышленные слова или действия, создающие у потерпевшего обоснованный страх немедленного тяжкого вреда.
+Класс: M-A.
+При демонстрации огнестрельного оружия — F-C.
+1.5. Безрассудное создание опасности (Recklessly Endangering)
+Поведение, создающее существенный риск тяжкого вреда другим лицам.
+Класс: M-A; при фактическом вреде — по ст. 1.2–1.3.
+1.6. Похищение человека (Kidnapping)
+1.6.1. Kidnapping II
+Незаконное перемещение либо удержание человека против воли с существенным ограничением свободы.
+Класс: F-B.
+1.6.2. Kidnapping I
+Похищение с целью выкупа, использования в качестве заложника, содействия другому преступлению, причинения тяжкого вреда либо устрашения третьих лиц.
+Класс: F-A; при смерти заложника — дополнительно ст. 1.1.
+1.7. Принуждение (Coercion)
+Принуждение к действию либо бездействию угрозой насилием, уничтожением имущества либо иным существенным вредом.
+Класс: F-C; при угрозе смертоносным оружием — F-B.
+1.8. Незаконное лишение свободы (Unlawful Imprisonment)
+Связывание, запирание либо иное удержание без признаков похищения.
+Класс: M-A; при применении оружия — F-C.
+РАЗДЕЛ 2. ПРЕСТУПЛЕНИЯ ПРОТИВ СОБСТВЕННОСТИ
+*(ORS Chapter 164)*
+2.1. Кража (Theft)
+Хищение чужого имущества без применения насилия к личности.
+Theft III — сумма до 5 000$ либо малоценное имущество — M-C
+Theft II — сумма 5 001$–25 000$ — M-A
+Theft I — свыше 25 000$, либо кража огнестрельного оружия, либо кража у должностного лица при исполнении — F-C
+Aggravated Theft I — свыше 50 000$ либо серия краж одним замыслом — F-B
+2.2. Кража услуг (Theft of Services)
+Неоплата заведомо платных услуг либо незаконное пользование чужим коммерческим оборудованием.
+Класс: M-B; при крупном ущербе — M-A.
+2.3. Мошенничество (Theft by Deception / Fraud)
+Получение имущества, денег либо услуг путём обмана, поддельных документов либо выдачи себя за иное лицо.
+Класс: F-C; при ущербе свыше 50 000$ — F-B.
+2.4. Грабёж и разбой (Robbery)
+2.4.1. Robbery III
+Хищение с применением либо угрозой физической силы без оружия.
+Класс: F-C.
+2.4.2. Robbery II
+Хищение с угрозой оружием либо с причинением физического вреда.
+Класс: F-B.
+2.4.3. Robbery I
+Хищение со смертоносным оружием; либо с тяжким вредом; либо группой лиц по предварительному сговору с оружием.
+Класс: F-A.
+2.5. Взлом (Burglary)
+2.5.1. Burglary II
+Незаконное проникновение в здание либо на огороженную территорию с умыслом совершить преступление.
+Класс: F-C.
+2.5.2. Burglary I
+То же с оружием; в жилище при наличии людей; либо с причинением вреда находящимся внутри.
+Класс: F-B; при смерти — дополнительно ст. 1.1.
+2.6. Незаконное проникновение (Criminal Trespass)
+2.6.1. Trespass II
+Нахождение на чужой территории после требования покинуть её либо проникновение вопреки явному запрету.
+Класс: M-B.
+2.6.2. Trespass I
+Проникновение в охраняемый объект (полицейский участок, мэрия, банк, склад, режимный объект) либо проникновение с оружием.
+Класс: M-A; на режимном объекте с оружием — F-C.
+2.7. Уничтожение и повреждение имущества (Criminal Mischief)
+Mischief III — ущерб до 5 000$ — M-C
+Mischief II — ущерб 5 001$–25 000$ — M-A
+Mischief I — ущерб свыше 25 000$, поджог, взрыв, вывод из строя городской инфраструктуры — F-B
+2.8. Угон транспорта (Unauthorized Use of a Vehicle)
+Завладение чужим транспортным средством без согласия владельца.
+Класс: F-C; с насилием к водителю — по ст. 2.4.
+2.9. Укрывательство и сбыт краденого (Theft by Receiving)
+Приобретение, хранение либо сбыт имущества, заведомо добытого преступным путём.
+Класс: M-A; при крупном размере либо оружии — F-C.
+РАЗДЕЛ 3. ОРУЖИЕ И ВЗРЫВЧАТЫЕ ВЕЩЕСТВА
+*(ORS Chapter 166; Portland City Code 14A.60)*
+3.1. Незаконное ношение огнестрельного оружия в общественном месте
+1. Запрещается носить заряженное огнестрельное оружие в общественном месте без законного основания.
+2. Законные основания:
+- сотрудник Бюро полиции при исполнении;
+- лицензированный торговец оружием в пределах торговой деятельности и охраны точки продаж;
+- лицо, имеющее разрешение, выданное мэрией либо Бюро полиции;
+- транспортировка разряженного оружия в чехле либо багаже до места законного хранения или продажи.
+3. Демонстрация оружия без необходимости в общественном месте образует нарушение даже при праве на владение.
+Класс: M-A; при наведении на людей либо выстреле — по Разделам 1 и 3.3.
+3.2. Владение оружием лицом, лишённым права
+Владение огнестрельным оружием лицом, которому судом, мэрией либо Бюро полиции запрещено владение.
+Класс: F-C.
+3.3. Незаконный выстрел (Unlawful Discharge)
+Выстрел в городе вне тира, вне необходимой обороны и вне законного применения силы должностным лицом.
+Класс: F-C; при попадании в человека — дополнительно Раздел 1; при стрельбе в людном месте — не ниже F-B.
+3.4. Незаконный оборот оружия
+Продажа либо передача огнестрельного оружия лицу без права на владение, либо торговля вне разрешённой точки.
+Класс: F-B.
+3.5. Взрывчатые вещества и самодельные взрывные устройства
+Изготовление, ношение, установка либо применение вне полномочий должностных лиц и вне режима объявленного военного положения.
+Класс: F-A; при жертвах — дополнительно ст. 1.1–1.3.
+3.6. Несообщение об утрате огнестрельного оружия
+Владелец обязан сообщить в Бюро полиции о краже либо утрате огнестрельного оружия в течение 48 часов с момента, когда узнал либо должен был узнать об утрате.
+Класс: V (штраф 2 500$–5 000$).
+3.7. Незаконное применение спецсредств
+Применение полицейских спецсредств гражданским лицом либо применение их против офицера.
+Класс: M-A; против офицера — F-C.
+РАЗДЕЛ 4. ПУБЛИЧНЫЙ ПОРЯДОК
+*(ORS 166.025, 166.065; Portland City Code Title 14A / 14B)*
+4.1. Хулиганство (Disorderly Conduct)
+4.1.1. Disorderly Conduct II
+Драки без тяжкого вреда, намеренный шум, создание помех движению, агрессивное поведение в общественном месте.
+Класс: M-B.
+4.1.2. Disorderly Conduct I
+То же при наличии оружия, массовой паники, срыва работы мэрии или полиции, либо при повторности.
+Класс: M-A.
+4.2. Преследование (Harassment)
+Оскорбительные действия, преследование по городу, неоднократные угрозы без состава Menacing.
+Класс: M-C; при систематичности — M-A.
+4.3. Блокирование государственных объектов
+Блокирование входов в мэрию, полицейский участок, больницу; воспрепятствование проезду экстренных служб.
+Класс: M-A; при применении силы — F-C.
+4.4. Ложный вызов экстренных служб
+Заведомо ложный вызов полиции, скорой помощи либо сообщение о бомбе или стрельбе при отсутствии события.
+Класс: M-A; при массовой панике — F-C.
+4.5. Публичное совершение тяжкого преступления
+Открытое совершение тяжкого преступления в общественном месте при скоплении людей.
+Класс: основной состав с отягчением по п. 0.7.
+4.6. Блокирование инфраструктуры
+Намеренное блокирование проезжей части, тротуаров, дверей и проходов без законного основания.
+Класс: V–M-B.
+4.7. Нарушение комендантского часа
+Нахождение в запрещённых зонах либо передвижение по городу вопреки комендантскому часу, введённому мэром на законном основании.
+Класс: M-B; при вооружённом нарушении — M-A.
+РАЗДЕЛ 5. ПРЕСТУПЛЕНИЯ ПРОТИВ ПРАВОСУДИЯ И ВЛАСТИ
+*(ORS Chapter 162)*
+5.1. Сопротивление задержанию (Resisting Arrest)
+Умышленное сопротивление лицу, заведомо являющемуся офицером, при законном задержании или аресте, с применением силы либо созданием риска травмы.
+Пассивное неподчинение без силы само по себе не образует настоящего состава, но может образовывать ст. 5.3.
+Класс: M-A; с оружием либо вредом офицеру — F-B.
+5.2. Побег (Escape)
+5.2.1. Escape III
+Побег из-под законного задержания.
+Класс: M-A.
+5.2.2. Escape II
+Побег из тюрьмы, автозака либо из-под конвоя.
+Класс: F-C.
+5.2.3. Escape I
+Побег с применением оружия, взятием заложника либо причинением тяжкого вреда.
+Класс: F-A.
+5.3. Неповиновение законному требованию офицера
+Отказ остановиться, предъявить документы, покинуть место оцепления либо подчиниться иному законному требованию.
+Класс: M-B; при повторности в одном эпизоде — M-A.
+5.4. Воспрепятствование офицеру (Interfering with a Peace Officer)
+Вмешательство в чужой арест, создание помехи преследованию, укрытие преследуемого.
+Класс: M-A; с применением силы — F-C.
+5.5. Дача заведомо ложных сведений офицеру
+Сообщение ложного имени, ложного алиби либо иных заведомо ложных фактов при проверке.
+Класс: M-A.
+5.6. Подделка доказательств и лжесвидетельство
+Подделка улик, ложные показания в официальном разбирательстве, уничтожение вещественных доказательств.
+Класс: F-C; по тяжкому делу — F-B.
+5.7. Взяточничество
+5.7.1. Дача взятки
+Передача либо обещание выгоды должностному лицу за незаконное действие или бездействие.
+Класс: F-B.
+5.7.2. Получение взятки
+Требование либо принятие выгоды должностным лицом.
+Класс: F-B с последующим отстранением от должности в порядке служебного устава.
+5.8. Самоуправство под видом власти
+Выдача себя за офицера, использование формы, сирены либо удостоверения без статуса.
+Класс: F-C; при задержании людей под этим прикрытием — F-B.
+5.9. Незаконный арест должностным лицом
+Арест без вероятной причины, без оснований в Кодексе либо из личных мотивов.
+Класс: F-C.
+РАЗДЕЛ 6. КОНТРОЛИРУЕМЫЕ ВЕЩЕСТВА
+*(ORS Chapter 475)*
+6.1. Классификация
+S-I — Тяжёлые контролируемые вещества (включая мет и аналоги) — полный запрет оборота
+S-II — Средние контролируемые вещества (включая каннабис вне лицензии) — запрет производства и сбыта без разрешения
+Параферналия — Лаборатории, оборудование выращивания, упаковка — контроль по месту и лицензии
+6.2. Незаконное хранение
+Класс: M-A (S-II); F-C (S-I).
+6.3. Незаконный сбыт и перевозка
+Класс: F-B (S-II); F-A (S-I).
+6.4. Содержание лаборатории либо плантации
+Класс: F-B; при угрозе отравления или взрыва для посторонних — F-A и статьи Раздела 1.
+6.5. Открытая торговля в общественном месте
+Класс: основной наркосостав с отягчением по п. 0.7.
+6.6. Конфискация
+Вещества, оборудование и транспорт, использованные для перевозки крупной партии, подлежат изъятию.
+РАЗДЕЛ 7. ДОРОЖНОЕ ДВИЖЕНИЕ
+*(ORS Chapter 811)*
+7.1. Опасное вождение
+Езда по тротуарам, в толпе, создание реальной угрозы столкновения, намеренный таран без обороны.
+Класс: M-B; при вреде здоровью — M-A / Раздел 1.
+7.2. Безрассудное вождение (Reckless Driving)
+Лихачество с явным безразличием к безопасности других.
+Класс: M-A; при тяжком вреде — F-C; при смерти — ст. 1.2.
+7.3. Наезд (Vehicular Assault)
+Наезд, повлёкший физический вред.
+Класс: M-A; при тяжком вреде — F-C.
+7.4. Оставление места ДТП
+Покидание места аварии с пострадавшими без сообщения в полицию или скорую помощь при наличии возможности.
+Класс: F-C.
+7.5. Вождение в состоянии опьянения
+Управление транспортом в состоянии алкогольного либо наркотического опьянения.
+Класс: M-A; при вреде — по совокупности.
+7.6. Неподчинение требованию остановить транспорт
+Отказ остановиться по законному требованию полиции, погоня.
+Класс: M-A; при опасной погоне с риском для третьих лиц — F-C.
+7.7. Незаконная стоянка и блокировка дорог
+Оставление транспорта в проезде, у входа в полицейский участок, мэрию или больницу без необходимости.
+Класс: V; при злостном игнорировании требования — M-C.
+7.8. Управление угнанным транспортом
+Квалифицируется по ст. 2.8; при погоне дополнительно ст. 7.6.
+РАЗДЕЛ 8. ЭКОНОМИЧЕСКИЕ И ГОРОДСКИЕ СОСТАВЫ
+8.1. Незаконная предпринимательская деятельность
+Торговля оружием, контролируемыми веществами либо иными запрещёнными товарами вне разрешения и вне разрешённой точки.
+Класс: по предмету оборота (Разделы 3 и 6), не ниже F-C.
+8.2. Вымогательство и рэкет
+Требование регулярных выплат под угрозой насилия или порчи имущества.
+Класс: F-B; при причинении вреда — по совокупности.
+8.3. Организация убийства по найму
+Класс: AF (наряду со ст. 1.1 для исполнителя).
+8.4. Порча городского имущества
+Повреждение объектов мэрии, полиции, больниц, дорожной инфраструктуры.
+Класс: не ниже M-A; при крупном ущербе — F-C / F-B.
+8.5. Незаконный захват территории
+Захват общественных зон под частный контроль без решения Совета города либо мэрии.
+Класс: M-A; с вооружённым удержанием — F-C.
+РАЗДЕЛ 9. ПОЛНОМОЧИЯ МЭРА И СОВЕТА ГОРОДА
+9.1. Компетенция
+Мэр и Совет города вправе издавать постановления по вопросам:
+• городского благоустройства и местного налогообложения;
+• лицензирования отдельных видов деятельности;
+• временных ограничений движения и комендантского часа;
+• назначения вознаграждений за розыск;
+• организации работы муниципальных служб.
+9.2. Пределы нормотворчества
+1. Акты мэра и Совета города не могут противоречить праву США, праву штата Орегон и настоящему Кодексу.
+2. Комендантский час объявляется только при массовых беспорядках, терроре, объявленном военном положении либо сопоставимой угрозе городу.
+3. Запрещается изменять Кодекс путём отсылки к посторонним источникам вне официальной процедуры принятия поправок.
+4. Запрещаются акты, делающие невозможной обычную жизнь мирных жителей без чрезвычайных оснований.
+5. Акт, противоречащий п. 9.2, ничтожен; Бюро полиции не исполняет ничтожный акт.
+9.3. Отмена
+Совет города вправе отменить указ мэра, противоречащий Кодексу. Мэр вправе наложить вето в пределах устава города; окончательное решение — за Советом в порядке, установленном уставом.
+РАЗДЕЛ 10. ПРОЦЕДУРА БЮРО ПОЛИЦИИ ПОРТЛЕНДА
+10.1. Остановка
+Офицер вправе остановить лицо при обоснованном подозрении либо при очевидном правонарушении.
+10.2. Задержание и арест
+Основания:
+1. Вероятная причина совершения состава настоящего Кодекса либо ORS.
+2. Судебный ордер.
+3. Задержание на месте преступления при непосредственном наблюдении.
+10.3. Порядок ареста
+1. Сообщить основание ареста (статью), как только это безопасно.
+2. Изъять оружие и орудия преступления.
+3. Доставить в участок либо изолятор без необоснованной жестокости.
+4. Назначить срок и/или штраф в пределах класса статьи.
+5. Зафиксировать арест в установленном порядке учёта.
+10.4. Обыск
+1. При аресте — в пределах досягаемости и для безопасности.
+2. Помещения — при согласии, по горячим следам преследования, при очевидных признаках преступления либо по ордеру.
+3. Обыск без оснований запрещён.
+10.5. Применение спецсредств
+Наручники, дубинка, электрошокер, огнестрельное оружие — по возрастанию силы и только соразмерно угрозе (п. 0.8).
+10.6. Права арестованного
+1. Знать статью обвинения.
+2. Получить медицинскую помощь при угрозе жизни, если это безопасно для офицеров.
+3. Хранить молчание.
+4. Обжаловать незаконный арест в городской суд, мэрии либо внутренней службе Бюро полиции.
+10.7. Запрещённые практики
+• арест без статьи закона;
+• срок вне класса санкции;
+• пытки и сексуализированное насилие;
+• внесудебная казнь;
+• использование полномочий в личных целях.
+РАЗДЕЛ 11. ОСОБЫЕ РЕЖИМЫ
+11.1. Военное положение и конфликты организаций
+При официально объявленном Советом города либо мэром особом режиме нормы Кодекса действуют с учётом введённых ограничений. В нейтральных общественных местах города Кодекс сохраняет силу, если актом о режиме не установлено иное.
+11.2. Чрезвычайное положение
+Мэр при законных основаниях может:
+• ввести комендантский час;
+• ограничить ношение оружия в указанных зонах;
+• усилить полномочия полиции на досмотр на контрольных пунктах.
+В акте указывается срок. Бессрочные чрезвычайные меры без пересмотра запрещены.
+11.3. Безопасные зоны города
+Преследование, начатое вне официально объявленной безопасной зоны, не прекращается входом в неё. Совершение преступлений в безопасной зоне квалифицируется с отягчением.
+РАЗДЕЛ 12. ЗАКЛЮЧИТЕЛЬНЫЕ ПОЛОЖЕНИЯ
+1. Настоящий Кодекс является официальным сводом законов муниципалитета Портленд, штат Орегон, и действует во всех четырёх частях города.
+2. Поправки принимаются Советом города в установленном порядке и подписываются мэром, либо вводятся иным законным актом городской власти.
+3. Внутренний устав Бюро полиции Портленда публикуется отдельно и не заменяет настоящий Кодекс.
+4. При пробеле офицер применяет ближайший состав по объекту охраны (жизнь, здоровье, собственность, порядок, власть) и направляет сведения о пробеле в юридический отдел мэрии для подготовки поправки.
+5. Кодекс вступает в силу с момента официальной публикации, если в акте о введении не указана иная дата.
+6. Обратная сила ужесточающих норм к деяниям, совершённым до публикации, не применяется.
+Приложение А. Краткая квалификация для патруля
+Драка без оружия — 1.3.1 / 4.1 — M-A / M-B
+Угроза пистолетом — 1.4 — F-C
+Ограбление с пистолетом — 2.4.2–2.4.3 — F-B / F-A
+Взлом дома — 2.5 — F-C / F-B
+Отказ покинуть частную территорию — 2.6 — M-B / M-A
+Стрельба в городе — 3.3 — F-C+
+Ношение ствола в паблике без права — 3.1 — M-A
+Сопротивление аресту — 5.1 — M-A / F-B
+Побег из тюрьмы — 5.2.2 — F-C
+Сбыт тяжёлых веществ — 6.3 — F-A
+Погоня и таран толпы — 7.2 / 7.6 — M-A / F-C
+Убийство — 1.1 — F-A / AF
+Приложение Б. Соответствие источникам права
+Раздел 1 — ORS 163 — Offenses Against Persons
+Раздел 2 — ORS 164 — Theft, Robbery, Burglary, Trespass, Mischief
+Раздел 3 — ORS 166; Portland City Code 14A.60
+Раздел 4 — ORS 166.025, 166.065; Portland Title 14A / 14B
+Раздел 5 — ORS 162 — Obstructing Governmental Administration
+Раздел 6 — ORS 475 — Controlled Substances
+Раздел 7 — ORS 811 — Rules of the Road
+Разделы 9–10 — Portland City Code Title 14; устав города Портленд
+Законы читаются как написано. Пробелы закрываются общими положениями Раздела 0 и нормами ORS, а не произвольным усмотрением без статьи.
+Город Портленд, штат Орегон
+Последнее изменение: 13.08.2026
+Конец Муниципального кодекса города Портленд.
+</script>
 <script>
+const DOCS = {
+  svod: { name:"Свод правил сервера", short:"Свод", tag:"СВОД", file:"rules.txt", title:/СВОД ПРАВИЛ СЕРВЕРА/i },
+  code: { name:"Муниципальный кодекс Портленда", short:"Кодекс", tag:"МК", file:"kodex.txt", title:/МУНИЦИПАЛЬНЫЙ КОДЕКС/i },
+};
+const DOC_IDS = Object.keys(DOCS);
 const EXAMPLES = [
   "Игрок A без RP-причины застрелил игрока B у спавна, B стоял AFK. На записи видно. Раньше A не наказывали.",
-  "Игрок A на разборке начал оскорблять администратора и вышел с сервера, не дождавшись вердикта.",
-  "Полицейский арестовал игрока, который просто стоял рядом с местом ограбления. Игрок в ответ убил полицейского.",
-  "Игрок умер в рейде и через минуту вернулся на то же место, чтобы отомстить убийце.",
+  "Двое ограбили магазин с пистолетами, продавец не сопротивлялся. Полиция их догнала, один стрелял в офицера.",
+  "Офицер арестовал игрока, который просто стоял рядом с местом ограбления, и обыскал его без причины. Игрок в ответ убил офицера.",
+  "Игрок на машине уходил от полиции, не остановился по требованию и сбил прохожего.",
+  "Игрок на разборке начал оскорблять администратора и вышел с сервера, не дождавшись вердикта.",
 ];
+const CLASS_RE = /\b(V|M-[ABC]|F-[ABC]|AF)\b/g;
+
 const SCHEMA = `Ответ — СТРОГО один JSON-объект без markdown и без текста вокруг, по схеме:
 {
   "summary": "1–2 предложения: что произошло и общий вывод",
   "players": [
     {
-      "name": "Игрок A",
-      "verdict": "итоговое наказание коротко, напр. «бан 18 часов», «предупреждение», «перманентный бан», «нарушений нет»",
+      "name": "Игрок A (если офицер/мэр — укажи роль)",
+      "verdict": "наказание АДМИНИСТРАЦИИ по Своду коротко: «бан 2 часа», «предупреждение», «перманентный бан», «нарушений нет»",
       "severity": "none | warn | ban | perm",
       "violations": [
         {
-          "article": "номер пункта как в Своде, напр. 1.5",
+          "article": "номер пункта СВОДА, напр. 1.5",
           "part": "часть, напр. «ч.1» или пусто",
           "title": "название пункта, напр. FreeKill",
-          "meaning": "что означает это нарушение простыми словами, 1–2 предложения",
-          "reason": "почему именно в этой ситуации это нарушение: какие действия игрока, со ссылкой на факты",
+          "meaning": "что означает это нарушение простыми словами",
+          "reason": "почему в этой ситуации это нарушение: какие действия игрока",
           "sanction": "санкция пункта дословно по Своду",
-          "assigned": "что назначено по этому пункту, напр. «бан 2 часа»"
+          "assigned": "что назначено, напр. «бан 2 часа»"
         }
       ],
-      "allowed": "если действия разрешены (самооборона, линия огня и т.п.) — пункт-исключение и почему; иначе пусто",
-      "aggravating": ["отягчающие обстоятельства по п. 0.7.3"],
-      "mitigating": ["смягчающие по п. 0.7.4"],
-      "calculation": "как получен итоговый срок: сложение (0.7.6), рецидив (0.7.7), середина диапазона и т.д."
+      "charges": [
+        {
+          "article": "номер статьи КОДЕКСА, напр. 2.4.2",
+          "title": "название статьи, напр. Robbery II",
+          "class": "класс по Кодексу: V, M-C, M-B, M-A, F-C, F-B, F-A или AF",
+          "meaning": "что это за состав простыми словами",
+          "reason": "какие действия подпадают под статью",
+          "term": "срок, который озвучивается в IC (по таблице 0.6)",
+          "fine": "штраф, если положен",
+          "minutes": "минут в меню ареста (по таблице 0.6, обычно середина диапазона класса)"
+        }
+      ],
+      "arrest": "итог для полиции коротко: «арест 22 мин (F-C + M-A), штраф до 125 000$, конфискация оружия» или «оснований для ареста нет»",
+      "allowed": "что в действиях законно/разрешено (самооборона, законный арест и т.п.) и почему; иначе пусто",
+      "aggravating": ["отягчающие (Свод 0.7.3 / Кодекс 0.7.2)"],
+      "mitigating": ["смягчающие (Свод 0.7.4 / Кодекс 0.7.3)"],
+      "calculation": "как получены срок бана и минуты ареста: сложение, рецидив, середина диапазона"
     }
   ],
-  "missing": ["каких доказательств/фактов не хватает и как от них изменится наказание (п. 0.6)"]
-}
-
-Правила работы:
-- Опирайся только на текст Свода ниже. Не выдумывай пункты и сроки. Номер пункта — ровно как в заголовке Свода (например 1.5, 0А.3).
-- Срок выбирай строго внутри диапазона пункта по критериям 0.7.
-- Если участник ничего не нарушил — severity "none", violations пустой массив, в allowed объясни почему.
-- Если деталей не хватает — всё равно дай предварительную оценку и опиши варианты в missing.
+  "missing": ["каких доказательств/фактов не хватает и как от них изменится итог"]
+}`;
+const RULES_TEXT = `Правила работы:
+- Есть ДВА разных документа. СВОД ПРАВИЛ СЕРВЕРА — OOC-правила, за их нарушение АДМИНИСТРАЦИЯ даёт бан/предупреждение (поле violations и verdict). МУНИЦИПАЛЬНЫЙ КОДЕКС — IC-законы города, по ним ПОЛИЦИЯ арестовывает (поле charges и arrest). Не путай номера: 1.5 в Своде и 1.5 в Кодексе — разные нормы.
+- Одно действие может быть IC-преступлением по Кодексу, но не нарушать Свод (например, ограбление по правилам RP) — тогда violations пустой, а charges заполнен. И наоборот.
+- Действия офицеров проверяй по Кодексу (0.8, Раздел 10, 5.8, 5.9) и по Своду (например, Free Arrest 1.8, JobAbuse 1.9).
+- Минуты ареста — строго по таблице «Перевод класса в игровой арест» Кодекса; при нескольких статьях — сложение по Кодексу 0.7. Срок бана — строго внутри диапазона пункта Свода по Своду 0.7.
+- Опирайся только на текст документов. Не выдумывай пункты, статьи и сроки. Номер — ровно как в заголовке документа (например 1.5, 0А.3, 2.4.2).
+- Если деталей не хватает — дай предварительную оценку и опиши варианты в missing.
 - При уточнении от пользователя верни ПОЛНЫЙ обновлённый JSON в той же схеме.
 - Пиши по-русски, коротко и понятно.`;
-const ROLE = "Ты — ассистент администратора игрового сервера Garry's Mod (DarkRP) CITY-67. По описанию ситуации определи, что нарушил каждый участник и какое наказание ему положено.";
+const MODE_TEXT = {
+  both: "Разбери ситуацию по ОБОИМ документам: наказание администрации по Своду и статьи Кодекса для полиции.",
+  svod: "Разбери ситуацию ТОЛЬКО по Своду правил сервера (наказание администрации). Поле charges оставь пустым, arrest — пустая строка.",
+  code: "Разбери ситуацию ТОЛЬКО по Муниципальному кодексу (что вменить полиции, класс, срок, минуты ареста). Поле violations оставь пустым, verdict — «—», severity — none.",
+};
+const ROLE = "Ты — помощник администрации и полиции игрового сервера Garry's Mod (DarkRP) CITY-67 (город Портленд).";
 
 const $ = id => document.getElementById(id);
 const sit = $("situation"), askBtn = $("ask"), stopBtn = $("stop"), statusEl = $("status"),
       resPanel = $("resultPanel"), resEl = $("result"), followWrap = $("followWrap"),
       follow = $("follow"), followBtn = $("followBtn");
-let ctl = null, current = null, busy = false, ARTS = [], RULES = "", RULES_META = {}, BUILTIN = "";
+let ctl = null, current = null, busy = false, ARTS = [];
+const DOCDATA = { svod:{ text:"", meta:{}, arts:[] }, code:{ text:"", meta:{}, arts:[] } };
+const BUILTIN = { svod:"", code:"" };
+let CLASSES = {};
 
 function lsGet(k){ try { return JSON.parse(localStorage.getItem(k) || "null"); } catch(e) { return null; } }
 function lsSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch(e) { return false; } }
@@ -995,27 +1504,48 @@ function fmtWhen(ts){ try { return new Date(ts).toLocaleString("ru-RU", { day:"n
 function hash(s){ let h = 5381; for (let i = 0; i < s.length; i++) h = (h * 33 ^ s.charCodeAt(i)) >>> 0; return h.toString(36); }
 let aiNoteFn = null;
 function aiNote(t){ aiNoteFn && aiNoteFn(t); }
+const arr = x => Array.isArray(x) ? x.filter(Boolean) : (x ? [x] : []);
 
-/* ---------- Свод: разбор текста ---------- */
+/* ---------- Документы: разбор текста ---------- */
 const norm = t => String(t).toLowerCase().replace(/ё/g,"е");
-function parseRules(text){
+function parseRules(text, doc){
   const arts = []; let sec = "", cur = null;
   for (const raw of text.split("\n")) {
-    const l = raw.trim(); if (!l) continue; let m;
+    const l = raw.trim().replace(/\s+/g, " "); if (!l) continue; let m;
     if ((m = l.match(/^РАЗДЕЛ\s+(\S+?)\.?\s+(.*)$/i))) { sec = m[1] + ". " + m[2]; cur = null; continue; }
-    if ((m = l.match(/^(\d+[АA]?\.\d+)\.\s+(.+)$/))) { cur = { num:m[1].replace("A","А"), title:m[2], sec, paras:[], sanc:[] }; arts.push(cur); continue; }
+    if ((m = l.match(/^(\d+[АA]?\.\d+(?:\.\d+)?)\.\s+(.+)$/))) { cur = { doc, num:m[1].replace("A","А"), title:m[2], sec, paras:[], sanc:[] }; arts.push(cur); continue; }
     if (!cur) continue;
     cur.paras.push(l);
-    if (/^Санкци/i.test(l)) cur.sanc.push(l);
+    if (/^(Санкци|Класс:)/i.test(l)) cur.sanc.push(l);
   }
-  arts.forEach(a => { a.nt = norm(a.num + " " + a.title); a.np = a.paras.map(norm); });
+  arts.forEach(a => {
+    a.nt = norm(a.num + " " + a.title); a.np = a.paras.map(norm);
+    a.key = a.doc + ":" + a.num;
+    if (doc === "code") a.classes = [...new Set(a.paras.filter(p => /^(Класс|Санкци)/.test(p) || /(—|\()\s*(V|M-[ABC]|F-[ABC]|AF)\b/.test(p)).join(" ").match(CLASS_RE) || [])];
+  });
   return arts;
 }
-function rulesDate(text){ return (text.match(/Последнее изменение документа:\s*([0-9.]+)/i) || [])[1] || ""; }
-function findArt(num, arts = ARTS){ const n = norm(String(num || "").replace(/^п\.?\s*/i,"").replace(/a/gi,"а")).match(/\d+а?\.\d+/)?.[0] || ""; return arts.find(a => norm(a.num) === n); }
+function parseClasses(text){
+  const C = {};
+  for (const l of text.split("\n")) {
+    let m = l.match(/^(V|M-[ABC]|F-[ABC]|AF) — (.+?) — (.+?) — (.+)$/);
+    if (m) { C[m[1]] = Object.assign(C[m[1]] || {}, { cat:m[2], term:m[3], fine:m[4] }); continue; }
+    m = l.match(/^(V|M-[ABC]|F-[ABC]|AF) — ([^—]+)$/);
+    if (m) C[m[1]] = Object.assign(C[m[1]] || {}, { min:m[2].trim() });
+  }
+  return C;
+}
+function docDate(text){ return (text.match(/Последнее изменение(?: документа)?:\s*([0-9.]+)/i) || [])[1] || ""; }
+function findArt(num, doc){
+  const n = norm(String(num || "").replace(/^(п|ст)\.?\s*/i,"").replace(/a/gi,"а")).match(/\d+а?\.\d+(?:\.\d+)?/)?.[0] || "";
+  const pool = doc ? ARTS.filter(a => a.doc === doc) : ARTS;
+  return pool.find(a => norm(a.num) === n) || (n.split(".").length === 3 ? pool.find(a => norm(a.num) === n.split(".").slice(0, 2).join(".")) : null);
+}
+function detectDoc(text){ for (const d of DOC_IDS) if (DOCS[d].title.test(text.slice(0, 3000))) return d; return null; }
 
+/* ---------- Чтение файлов: .docx / .pdf / .txt ---------- */
 async function docxToText(buf){
-  if (!window.JSZip) throw new Error("Для чтения .docx нужен интернет (библиотека не загрузилась). Сохрани документ как .txt и загрузи его.");
+  if (!window.JSZip) throw new Error("Для чтения .docx нужен интернет (библиотека не загрузилась). Сохрани документ как .txt или .pdf.");
   const zip = await JSZip.loadAsync(buf);
   const f = zip.file("word/document.xml"); if (!f) throw new Error("Это не похоже на документ Word (.docx).");
   const xml = await f.async("string");
@@ -1039,6 +1569,102 @@ async function docxToText(buf){
   }
   return out.join("\n") + "\n";
 }
+function loadScript(src){ return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("Не удалось загрузить библиотеку для чтения PDF — нужен интернет.")); document.head.appendChild(s); }); }
+async function pdfToLayout(buf){
+  const CDN = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+  if (!window.pdfjsLib) { await loadScript(CDN + "pdf.min.js"); await loadScript(CDN + "pdf.worker.min.js"); }
+  pdfjsLib.GlobalWorkerOptions.workerSrc = CDN + "pdf.worker.min.js";
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buf), isEvalSupported:false }).promise;
+  const pages = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    const items = tc.items.filter(it => it.str && it.str.trim()).map(it => ({ s: it.str, x: it.transform[4], y: it.transform[5], w: it.width, h: Math.abs(it.transform[3]) || it.height || 10 }));
+    if (!items.length) { pages.push(""); continue; }
+    const cws = items.filter(it => it.s.length > 3).map(it => it.w / it.s.length).sort((a, b) => a - b);
+    const cw = cws.length ? cws[Math.floor(cws.length / 2)] : 5;
+    const minX = Math.min(...items.map(it => it.x));
+    items.sort((a, b) => b.y - a.y || a.x - b.x);
+    const lines = [];
+    for (const it of items) {
+      const ln = lines.find(l => Math.abs(l.y - it.y) < Math.max(2, it.h * 0.4));
+      if (ln) ln.items.push(it); else lines.push({ y: it.y, h: it.h, items: [it] });
+    }
+    lines.sort((a, b) => b.y - a.y);
+    const gaps = []; for (let i = 1; i < lines.length; i++) gaps.push(lines[i - 1].y - lines[i].y);
+    const out = [];
+    lines.forEach((ln, i) => {
+      if (i && lines[i - 1].y - ln.y > 1.95 * Math.min(lines[i - 1].h, ln.h)) out.push("");
+      ln.items.sort((a, b) => a.x - b.x);
+      let s = "", end = null;
+      for (const it of ln.items) {
+        if (end !== null && it.x - end < cw * 3 && ((/[A-Za-z]$/.test(s) && /^(ff|fi|fl)/.test(it.s)) || (/(ff|fi|fl)$/.test(s) && /^[a-z]/.test(it.s)))) { s += it.s; end = it.x + it.w; continue; }
+        const col = Math.round((it.x - minX) / cw);
+        if (end !== null && it.x - end > cw * 1.5) s += "  ";
+        else if (end !== null && it.x - end > cw * 0.4 && !s.endsWith(" ") && !(/[A-Za-z]$/.test(s) && /^(ff|fi|fl)/.test(it.s))) s += " ";
+        if (col > s.length + 1) s += " ".repeat(col - s.length);
+        s += it.s; end = it.x + it.w;
+      }
+      out.push(s.replace(/\s+$/, ""));
+    });
+    pages.push(out.join("\n"));
+  }
+  return pages.join("\n\f");
+}
+// layout text (columns kept) -> one paragraph per line, tables as "a — b — c"
+function layoutToRules(t){
+  let lines = t.replace(/\f/g, "\n").split("\n");
+  const st = lines.findIndex(l => /СВОД ПРАВИЛ СЕРВЕРА|МУНИЦИПАЛЬНЫЙ КОДЕКС ГОРОДА/i.test(l));
+  if (st > 0) lines = lines.slice(st);
+  const HEAD = /^\d+[АA]?\.\d+(\.\d+)?\.\s+\S/;
+  const NEWPAR = /^(\d+[АA]?(\.\d+)*\.?\s|[-•]\s|[А-ЯЁA-Z][а-яёa-z]{2,}(?: [а-яёa-z]+){0,2}:\s|Санкци|Класс:|РАЗДЕЛ|Примечание|Приложение|\*\(|OOC\.|Обычный случай|В IC|В меню|Законы читаются|Город Портленд|Последнее изменение|Конец |CITY-67 входит|Штат |Официальное|Краткое|Юрисдикция|Применяемое|Городские нормы|О наименовании|В тексте Кодекса|В настоящем Своде|В акте)/;
+  const HDR = /^\s*(Термин\s{2,}Определение|Класс\s{2,}Категория|Класс\s{2,}Срок|Ситуация\s{2,}Статья|Блок Кодекса\s{2,}Источник|Степень\s{2,}Условие|Категория\s{2,}Содержание)/;
+  const TEND = /^(\d+[АA]?\.\d+\.?\s|РАЗДЕЛ|Примечание|OOC\.|Обычный случай|Законы читаются|Город Портленд|В настоящем|\d+\.\s)/;
+  const colstarts = h => { const r = [h.length - h.trimStart().length]; for (const m of h.trimEnd().matchAll(/\S\s{2,}/g)) r.push(m.index + m[0].length); return r; };
+  const out = []; let par = null, i = 0;
+  const flush = () => { if (par) out.push(par.replace(/\s+/g, " ").trim()); par = null; };
+  const unbalanced = s => (s.match(/\(/g) || []).length > (s.match(/\)/g) || []).length;
+  while (i < lines.length) {
+    const l = lines[i];
+    if (HDR.test(l)) {
+      flush(); let cols = colstarts(l); i++;
+      const rows = []; let cur = null, blank = true;
+      while (i < lines.length) {
+        const l2 = lines[i].replace(/\s+$/, "");
+        if (!l2.trim()) { blank = true; i++; continue; }
+        if (HDR.test(l2)) { cols = colstarts(l2); i++; blank = true; continue; }
+        const s2 = l2.trimStart();
+        if (TEND.test(s2) && (l2.length - s2.length) < cols[1] - 2) break;
+        if (/^штраф$/.test(s2)) { i++; continue; }
+        if (blank || !cur) { if (cur) rows.push(cur); cur = cols.map(() => ""); }
+        for (const m of l2.matchAll(/\S+(?:\s\S+)*/g)) {
+          const pos = m.index; let k = 0;
+          cols.forEach((c, j) => { if (pos >= c - 3) k = j; });
+          const glue = cur[k].endsWith("-") && /[A-Za-zА-Яа-яЁё]/.test(cur[k].slice(-2, -1));
+          cur[k] = cur[k] + (cur[k] && !glue ? " " : "") + m[0];
+        }
+        blank = false; i++;
+      }
+      if (cur) rows.push(cur);
+      rows.forEach(r => { if (r.some(Boolean)) out.push(r.map(c => c.trim()).filter(Boolean).join(" — ")); });
+      continue;
+    }
+    const s = l.trim();
+    if (!s) {
+      let j = i + 1; while (j < lines.length && !lines[j].trim()) j++;
+      const nxt = j < lines.length ? lines[j].trim() : "";
+      if (!(par && (/^[a-zа-яё]/.test(nxt) || (/^РАЗДЕЛ/.test(par) && /^[А-ЯЁ\s]+$/.test(nxt))))) flush();
+      i++; continue;
+    }
+    const weak = par !== null && /^(-\s|\d+(\.\d+)*\s)/.test(s) && (!/[.:;!?»"]$/.test(par) || /(п|ст|ч|см)\.$/.test(par)) && !HEAD.test(par) && !/^[-•]\s/.test(par);
+    const cont = par !== null && (weak || (!NEWPAR.test(s) && (!HEAD.test(par) || unbalanced(par) || /^[a-zа-яё]/.test(s))));
+    if (cont) { const glue = par.endsWith("-") && /[A-Za-zА-Яа-яЁё]/.test(par.slice(-2, -1)) && /^[a-zа-яё]/.test(s); par = par + (glue ? "" : " ") + s; }
+    else { flush(); par = s; }
+    i++;
+  }
+  flush();
+  return out.map(l => l.replace(/\s+([,.;:)])/g, "$1").replace(/\(\s+/g, "(")).join("\n") + "\n";
+}
 
 function diffRules(oldArts, newArts){
   const res = { added:[], removed:[], changed:[] };
@@ -1047,96 +1673,114 @@ function diffRules(oldArts, newArts){
   oldArts.forEach(a => { if (!n.has(a.num)) res.removed.push(a); });
   newArts.forEach(a => {
     const b = o.get(a.num); if (!b) return;
-    const same = b.title === a.title && b.paras.join("\n") === a.paras.join("\n");
-    if (!same) res.changed.push({ a, b, sanc: b.sanc.join(" ") !== a.sanc.join(" "), lines: a.paras.filter(p => !b.paras.includes(p)).length + b.paras.filter(p => !a.paras.includes(p)).length });
+    if (b.title === a.title && b.paras.join("\n") === a.paras.join("\n")) return;
+    res.changed.push({ a, b, sanc: b.sanc.join(" ") !== a.sanc.join(" "), lines: a.paras.filter(p => !b.paras.includes(p)).length + b.paras.filter(p => !a.paras.includes(p)).length });
   });
   return res;
 }
 function diffHtml(d){
-  if (!d.added.length && !d.removed.length && !d.changed.length) return '<div class="it">Текст пунктов не изменился.</div>';
+  if (!d.added.length && !d.removed.length && !d.changed.length) return '<div class="it">Текст пунктов не изменился — эта версия совпадает с текущей.</div>';
   let h = "";
   if (d.changed.length) {
-    h += `<div class="grp">Изменено пунктов: ${d.changed.length}</div>`;
+    h += `<div class="g">Изменено: ${d.changed.length}</div>`;
     d.changed.forEach(c => {
       h += `<div class="it"><b>${esc(c.a.num)} ${esc(c.a.title)}</b>${c.b.title !== c.a.title ? ` <span class="old">${esc(c.b.title)}</span>` : ""}<br>`;
-      if (c.sanc) h += `Санкция: <span class="old">${esc(c.b.sanc.join(" ") || "—")}</span> → <span class="new">${esc(c.a.sanc.join(" ") || "—")}</span>`;
-      else h += `<span class="note">изменено строк текста: ${c.lines}</span>`;
+      h += c.sanc ? `Наказание: <span class="old">${esc(c.b.sanc.join(" ") || "—")}</span> → <span class="new">${esc(c.a.sanc.join(" ") || "—")}</span>` : `<span class="note">изменено строк текста: ${c.lines}</span>`;
       h += `</div>`;
     });
   }
-  if (d.added.length) h += `<div class="grp">Новые пункты: ${d.added.length}</div>` + d.added.map(a => `<div class="it"><b>${esc(a.num)} ${esc(a.title)}</b>${a.sanc.length ? "<br>" + esc(a.sanc.join(" ")) : ""}</div>`).join("");
-  if (d.removed.length) h += `<div class="grp">Удалённые пункты: ${d.removed.length}</div>` + d.removed.map(a => `<div class="it"><span class="old">${esc(a.num)} ${esc(a.title)}</span></div>`).join("");
+  if (d.added.length) h += `<div class="g">Новые: ${d.added.length}</div>` + d.added.map(a => `<div class="it"><b>${esc(a.num)} ${esc(a.title)}</b>${a.sanc.length ? "<br>" + esc(a.sanc.join(" ")) : ""}</div>`).join("");
+  if (d.removed.length) h += `<div class="g">Удалённые: ${d.removed.length}</div>` + d.removed.map(a => `<div class="it"><span class="old">${esc(a.num)} ${esc(a.title)}</span></div>`).join("");
   return h;
 }
 
 const RulesStore = {
   canEdit: true,
   async init(apply){
-    BUILTIN = document.getElementById("rulesText").textContent;
-    const o = lsGet("rulesOverride");
-    if (o?.text) apply(o.text, o.meta); else apply(BUILTIN, { source:"builtin" });
+    DOC_IDS.forEach(d => { BUILTIN[d] = document.getElementById("doc_" + d).textContent; const o = lsGet("docOverride_" + d); if (o?.text) apply(d, o.text, o.meta); else apply(d, BUILTIN[d], { source:"builtin" }); });
+    renderDocs();
   },
-  async save(text, name){ if (!lsSet("rulesOverride", { text, meta:{ source:"uploaded", name, uploadedAt:Date.now() } })) throw new Error("Не удалось сохранить в браузере (нет места)."); },
-  async reset(){ lsSet("rulesOverride", null); },
-  where: "Он сохранён в этом браузере.",
+  async save(d, text, name){ if (!lsSet("docOverride_" + d, { text, meta:{ source:"uploaded", name, uploadedAt:Date.now() } })) throw new Error("Не удалось сохранить в браузере (нет места)."); return "local" + Date.now(); },
+  async reset(d){ lsSet("docOverride_" + d, null); },
+  where: "Она сохранена в этом браузере.",
 };
 
-function applyRules(text, meta){
-  const arts = parseRules(text);
+function applyDoc(d, text, meta){
+  const arts = parseRules(text, d);
   if (arts.length < 5) return;
-  RULES = text; ARTS = arts; RULES_META = meta || {};
-  const d = rulesDate(text);
-  $("rulesChipText").innerHTML = `Свод <b>${esc(d || "без даты")}</b> · ${arts.length} п.`;
-  $("rulesDot").className = "dot " + (meta?.source === "uploaded" ? "warn" : "on");
-  buildSecChips(); doSearch(); renderRulesInfo();
+  DOCDATA[d] = { text, meta: meta || {}, arts };
+  ARTS = DOC_IDS.flatMap(k => DOCDATA[k].arts);
+  if (d === "code") CLASSES = parseClasses(text);
+  renderDocChips(); buildFilters(); doSearch(); renderDocs();
   if (current) showCase(current);
 }
-function renderRulesInfo(){
-  const m = RULES_META, d = rulesDate(RULES);
-  $("rulesInfo").innerHTML = `<span class="k">Редакция</span><span class="v">${esc(d || "—")}</span>
-    <span class="k">Пунктов</span><span class="v">${ARTS.length}</span>
-    <span class="k">Источник</span><span class="v">${m.source === "uploaded" ? "загруженный файл «" + esc(m.name || "") + "»" + (m.uploadedAt ? ", " + esc(fmtWhen(m.uploadedAt)) : "") : "исходный документ"}</span>`;
-  $("rulesEdit").hidden = !RulesStore.canEdit; $("rulesReadonly").hidden = RulesStore.canEdit;
-  $("rulesReset").hidden = m.source !== "uploaded";
+function renderDocChips(){
+  $("docChips").innerHTML = DOC_IDS.filter(d => DOCDATA[d].arts.length).map(d => {
+    const x = DOCDATA[d];
+    return `<button class="chipbtn" data-go="settings"><span class="dot ${x.meta.source === "uploaded" ? "warn" : "on"}"></span>${esc(DOCS[d].short)} <b>${esc(docDate(x.text) || "—")}</b></button>`;
+  }).join("");
+  $("docChips").querySelectorAll("button").forEach(b => b.onclick = () => showView("settings"));
 }
-let pendingRules = null;
+function renderDocs(){
+  $("docRows").innerHTML = DOC_IDS.map(d => {
+    const x = DOCDATA[d], m = x.meta || {};
+    return `<div class="docrow"><div class="row between"><b>${esc(DOCS[d].name)}</b><span class="doc ${d}">${DOCS[d].tag}</span></div>
+      <div class="kv"><span class="k">Редакция</span><span class="v">${esc(docDate(x.text) || "—")}</span>
+      <span class="k">Пунктов</span><span class="v">${x.arts.length}</span>
+      <span class="k">Источник</span><span class="v">${m.source === "uploaded" ? "загружен «" + esc(m.name || "") + "»" + (m.uploadedAt ? ", " + esc(fmtWhen(m.uploadedAt)) : "") : "встроенная версия"}</span></div>
+      ${m.source === "uploaded" && RulesStore.canEdit ? `<div><button class="btn small ghost" data-reset="${d}">Вернуть встроенную версию</button></div>` : ""}</div>`;
+  }).join("");
+  $("docRows").querySelectorAll("[data-reset]").forEach(b => b.onclick = async () => {
+    const d = b.dataset.reset;
+    if (!b.dataset.arm) { b.dataset.arm = 1; b.textContent = "Точно? Нажми ещё раз"; setTimeout(() => { b.dataset.arm = ""; b.textContent = "Вернуть встроенную версию"; }, 4000); return; }
+    try { await RulesStore.reset(d); applyDoc(d, BUILTIN[d], { source:"builtin" }); $("rulesStatus").textContent = "Возвращена встроенная версия: " + DOCS[d].name + "."; }
+    catch (e) { $("rulesStatus").textContent = e.message || "Не получилось."; }
+  });
+  $("rulesEdit").hidden = !RulesStore.canEdit; $("rulesReadonly").hidden = RulesStore.canEdit;
+}
+
+let pendingDoc = null;
 async function handleRulesFile(file){
-  const st = $("rulesStatus"); st.className = "status"; st.textContent = "Читаю документ…"; $("rulesPreview").hidden = true;
+  const st = $("rulesStatus"); st.className = "status"; st.textContent = "Читаю документ…"; $("rulesPreview").hidden = true; $("pickDoc").hidden = true;
   try {
     const buf = await file.arrayBuffer();
-    const text = /\.docx$/i.test(file.name) || new Uint8Array(buf.slice(0, 2)).join() === "80,75" ? await docxToText(buf) : new TextDecoder().decode(buf);
-    const arts = parseRules(text);
-    if (arts.length < 10) throw new Error("В документе не нашлось пунктов Свода (ожидаются заголовки вида «1.5. FreeKill»). Найдено: " + arts.length + ".");
-    pendingRules = { text, name: file.name };
-    const d = diffRules(ARTS, arts);
-    st.textContent = `Документ прочитан: ${arts.length} пунктов, редакция ${rulesDate(text) || "без даты"}. Проверь изменения и нажми «Применить».`;
-    $("rulesDiff").innerHTML = diffHtml(d); $("rulesPreview").hidden = false;
+    const head = new Uint8Array(buf.slice(0, 5));
+    let text;
+    if (/\.pdf$/i.test(file.name) || String.fromCharCode(...head) === "%PDF-") { st.textContent = "Читаю PDF…"; text = layoutToRules(await pdfToLayout(buf)); }
+    else if (/\.docx$/i.test(file.name) || (head[0] === 80 && head[1] === 75)) text = await docxToText(buf);
+    else text = new TextDecoder().decode(buf);
+    const d = detectDoc(text);
+    pendingDoc = { text, name: file.name, doc: d };
+    if (!d) { st.textContent = "Не удалось понять, какой это документ."; $("pickDoc").hidden = false; return; }
+    previewPending();
   } catch (e) { st.className = "status err"; st.textContent = e.message || "Не удалось прочитать файл."; }
 }
+function previewPending(){
+  const st = $("rulesStatus"), { text, doc } = pendingDoc;
+  const arts = parseRules(text, doc);
+  if (arts.length < 10) { st.className = "status err"; st.textContent = "В документе не нашлось пунктов (ожидаются заголовки вида «1.5. FreeKill»). Найдено: " + arts.length + "."; pendingDoc = null; return; }
+  st.className = "status";
+  st.textContent = `${DOCS[doc].name}: ${arts.length} пунктов, редакция ${docDate(text) || "без даты"}. Проверь изменения и нажми «Применить».`;
+  $("rulesDiff").innerHTML = diffHtml(diffRules(DOCDATA[doc].arts, arts)); $("rulesPreview").hidden = false;
+}
+$("pickDoc").querySelectorAll("button").forEach(b => b.onclick = () => { if (!pendingDoc) return; pendingDoc.doc = b.dataset.doc; $("pickDoc").hidden = true; previewPending(); });
 $("rulesFile").addEventListener("change", e => { const f = e.target.files[0]; if (f) handleRulesFile(f); e.target.value = ""; });
 const drop = $("drop");
 drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
 drop.addEventListener("dragleave", () => drop.classList.remove("over"));
 drop.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f) handleRulesFile(f); });
-$("rulesCancel").onclick = () => { pendingRules = null; $("rulesPreview").hidden = true; $("rulesStatus").textContent = ""; };
+$("rulesCancel").onclick = () => { pendingDoc = null; $("rulesPreview").hidden = true; $("rulesStatus").textContent = ""; };
 $("rulesApply").onclick = async () => {
-  if (!pendingRules) return;
+  if (!pendingDoc) return;
   const st = $("rulesStatus"); st.className = "status"; st.textContent = "Сохраняю…";
+  const { doc, text, name } = pendingDoc;
   try {
-    await RulesStore.save(pendingRules.text, pendingRules.name);
-    applyRules(pendingRules.text, { source:"uploaded", name:pendingRules.name, uploadedAt:Date.now(), version:"local" + Date.now() });
-    st.textContent = "Готово: новый Свод применён. " + RulesStore.where;
-    pendingRules = null; $("rulesPreview").hidden = true;
+    const version = await RulesStore.save(doc, text, name);
+    applyDoc(doc, text, { source:"uploaded", name, uploadedAt:Date.now(), version });
+    st.textContent = "Готово: " + DOCS[doc].name + " обновлён. " + RulesStore.where;
+    pendingDoc = null; $("rulesPreview").hidden = true;
   } catch (e) { st.className = "status err"; st.textContent = e.message || "Не удалось сохранить."; }
 };
-let resetArmed = false;
-$("rulesReset").onclick = async () => {
-  if (!resetArmed) { resetArmed = true; $("rulesReset").textContent = "Точно вернуть исходный? Нажми ещё раз"; setTimeout(() => { resetArmed = false; $("rulesReset").textContent = "Вернуть исходный Свод"; }, 4000); return; }
-  resetArmed = false; $("rulesReset").textContent = "Вернуть исходный Свод";
-  try { await RulesStore.reset(); lsSet("rulesCache", null); applyRules(BUILTIN, { source:"builtin" }); $("rulesStatus").textContent = "Возвращён исходный Свод."; }
-  catch (e) { $("rulesStatus").textContent = e.message || "Не получилось."; }
-};
-$("rulesChip").onclick = () => showView("settings");
 
 /* ---------- ИИ: несколько подключений с автопереключением ---------- */
 const PROV = {
@@ -1393,18 +2037,18 @@ const Store = {
 function setSync(on){ $("syncDot").className = "dot"; $("syncText").textContent = "Только в этом браузере"; $("histSync").textContent = "только в этом браузере"; }
 
 /* ---------- Поиск ---------- */
-const SYN = { "фк":"freekill","фрикил":"freekill","фрикилл":"freekill","фир":"fearrp","фирарп":"fearrp","лив":"leaverp","ливрп":"leaverp","краудрп":"crowdrp","фанрп":"funrp","джобабуз":"jobabuse","рдм":"rdm","мрдм":"mrdm","дм":"rdm","нлр":"nlr","мг":"metagaming","метагейм":"metagaming","пг":"powergaming","павергейм":"powergaming","нрп":"nonrp","нонрп":"nonrp","фд":"freedamage","фридамаг":"freedamage","ск":"spawnkill","спавнкил":"spawnkill","гз":"гринзон","гринзон":"гринзон","ерп":"erp","афк":"afk","читы":"чит","джоббан":"jobban","кд":"кулдаун","мут":"mute" };
+const SYN = { "фк":"freekill","фрикил":"freekill","фрикилл":"freekill","фир":"fearrp","фирарп":"fearrp","лив":"leaverp","ливрп":"leaverp","краудрп":"crowdrp","фанрп":"funrp","джобабуз":"jobabuse","рдм":"rdm","мрдм":"mrdm","дм":"rdm","нлр":"nlr","мг":"metagaming","метагейм":"metagaming","пг":"powergaming","павергейм":"powergaming","нрп":"nonrp","нонрп":"nonrp","фд":"freedamage","фридамаг":"freedamage","ск":"spawnkill","спавнкил":"spawnkill","гз":"гринзон","гринзон":"гринзон","ерп":"erp","афк":"afk","читы":"чит","джоббан":"jobban","кд":"кулдаун","мут":"mute","ствол":"огнестрел","пушк":"огнестрел","тачк":"транспорт","машин":"транспорт","авто":"транспорт","наркот":"веществ","мет":"веществ","травк":"веществ","коп":"офицер","мент":"офицер","полицейск":"офицер","мусор":"офицер","ограб":"граб","разбо":"разбо","угон":"угон","дтп":"дтп","взятк":"взятк" };
 const STOP = new Set("игрок игро был была было были его ему ее она они это эта этот того что как так все при для без над под про после через когда потом тоже еще уже или либо если чтобы который которы сам свой своего себя меня мне тебя нет просто очень может можно него нее них".split(" "));
 function stem(w){ const k = Object.keys(SYN).find(k => w === k || (k.length >= 4 && w.startsWith(k))); if (k) return SYN[k]; if (/^[\d.]+$/.test(w)) return w; if (w.length <= 3) return w; if (w.length === 4) return w.slice(0,3); return w.slice(0, Math.max(4, w.length-2)); }
 function stemsOf(q, forAI){ return [...new Set(norm(q).split(/[^а-яa-z0-9.]+/).filter(Boolean).filter(w => !forAI || (w.length > 3 && !STOP.has(w)) || SYN[w]).map(stem))]; }
-function scoreArts(stems){
+function scoreArts(stems, pool = ARTS){
   const scored = [];
-  for (const a of ARTS) {
+  for (const a of pool) {
     let score = 0, hit = 0, best = null, bestN = 0;
     for (const s of stems) {
       let found = false;
       if (a.nt.includes(s)) { score += 6; found = true; }
-      a.np.forEach(p => { if (p.includes(s)) { score += /^санкци/.test(p) ? 2 : 1; found = true; } });
+      a.np.forEach(p => { if (p.includes(s)) { score += /^(санкци|класс)/.test(p) ? 2 : 1; found = true; } });
       if (found) hit++;
     }
     if (!hit) continue;
@@ -1418,13 +2062,15 @@ function hl(text, stems){
   const re = new RegExp("(" + stems.map(s => s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|") + ")[а-яa-z0-9-]*", "gi");
   return h.replace(re, "<mark>$&</mark>");
 }
-function sancHtml(a, stems){ return a.sanc.length ? '<div class="sanc">' + a.sanc.map(t => hl(t, stems).replace(/^(Санкци[^:]*:)/i, "<b>$1</b>")).join("<br>") + "</div>" : ""; }
+function classInfo(c){ const x = CLASSES[c]; return x ? [x.min && x.min + " мин", x.term, x.fine && "штраф " + x.fine].filter(Boolean).join(" · ") : ""; }
+function classChips(a){ return a.doc === "code" && a.classes?.length ? `<div class="cls">${a.classes.map(c => `<span class="cl" title="${esc(CLASSES[c]?.cat || "")}">${c}${CLASSES[c]?.min ? " · " + esc(CLASSES[c].min) + " мин" : ""}</span>`).join("")}</div>` : ""; }
+function sancHtml(a, stems){ return a.sanc.length ? '<div class="sanc">' + a.sanc.map(t => hl(t, stems).replace(/^((Санкци[^:]*|Класс):)/i, "<b>$1</b>")).join("<br>") + "</div>" : ""; }
 function fullHtml(a, stems = []){ return a.paras.map(p => `<p>${hl(p, stems)}</p>`).join(""); }
-const explainCache = lsGet("explain2") || {};
+const explainCache = lsGet("explain3") || {};
 function card(a, stems, snippetIdx){
-  const d = document.createElement("article"); d.className = "art";
-  const sp = snippetIdx != null && !/^Санкци/i.test(a.paras[snippetIdx]) ? a.paras[snippetIdx] : null;
-  d.innerHTML = `<button class="art-h" aria-expanded="false"><span class="num">${a.num}</span><span class="ttl">${hl(a.title, stems)}</span><span class="chev">›</span></button>${sancHtml(a, stems)}${sp ? `<div class="snip">${hl(sp.length > 260 ? sp.slice(0,260) + "…" : sp, stems)}</div>` : ""}
+  const d = document.createElement("article"); d.className = "art " + a.doc;
+  const sp = snippetIdx != null && !/^(Санкци|Класс:)/i.test(a.paras[snippetIdx]) ? a.paras[snippetIdx] : null;
+  d.innerHTML = `<button class="art-h" aria-expanded="false"><span class="doc ${a.doc}">${DOCS[a.doc].tag}</span><span class="num">${a.num}</span><span class="ttl">${hl(a.title, stems)}</span><span class="chev">›</span></button>${sancHtml(a, stems)}${classChips(a)}${sp ? `<div class="snip">${hl(sp.length > 260 ? sp.slice(0,260) + "…" : sp, stems)}</div>` : ""}
   <div class="full" hidden>
     <div class="row"><button class="btn small ex">Объяснить простыми словами</button></div>
     <div class="explain" hidden></div>
@@ -1432,28 +2078,40 @@ function card(a, stems, snippetIdx){
   </div>`;
   const btn = d.querySelector(".art-h"), full = d.querySelector(".full"), exBtn = d.querySelector(".ex"), exBox = d.querySelector(".explain");
   btn.onclick = () => { full.hidden = !full.hidden; d.classList.toggle("open", !full.hidden); btn.setAttribute("aria-expanded", String(!full.hidden)); };
-  const key = hash(a.num + a.paras.join("\n"));
+  const key = hash(a.key + a.paras.join("\n"));
   const showEx = t => { exBox.hidden = false; exBox.innerHTML = md(t); };
   if (explainCache[key]) { showEx(explainCache[key]); exBtn.hidden = true; }
   exBtn.onclick = async () => {
     exBtn.disabled = true; exBox.hidden = false; exBox.innerHTML = '<span class="thinking"><i></i><i></i><i></i></span>';
     aiNoteFn = t => { exBox.innerHTML = '<span class="thinking"><i></i><i></i><i></i></span> ' + esc(t); };
     try {
-      const sys = () => "Ты помогаешь администратору сервера Garry's Mod DarkRP CITY-67. Объясни пункт правил простыми словами для админа, по-русски, коротко markdown-списком: 1) что запрещено, 2) пример нарушения, 3) что НЕ является нарушением (если есть исключения), 4) какое наказание. Не выдумывай ничего сверх текста.\n\nПункт " + a.num + ". " + a.title + "\n" + a.paras.join("\n");
-      const { text } = await callAI(sys, [{ role:"user", content:"Объясни этот пункт." }], undefined, t => showEx(t), { quick:true });
-      explainCache[key] = text; lsSet("explain2", explainCache); showEx(text); exBtn.hidden = true;
+      const isCode = a.doc === "code";
+      const cls = isCode ? (a.classes || []).map(c => `${c}: ${CLASSES[c]?.cat || ""}, ${CLASSES[c]?.term || ""}, штраф ${CLASSES[c]?.fine || "—"}, в меню ареста ${CLASSES[c]?.min || "—"} мин`).join("\n") : "";
+      const sys = () => isCode
+        ? "Ты помогаешь полиции игрового сервера Garry's Mod DarkRP CITY-67 (город Портленд). Объясни статью Муниципального кодекса простыми словами для офицера, по-русски, коротко markdown-списком: 1) что запрещено, 2) пример из игры, 3) что НЕ подпадает под статью, 4) класс и наказание: срок в IC, штраф, сколько минут ставить в меню ареста. Не выдумывай ничего сверх текста.\n\nСтатья " + a.num + ". " + a.title + "\n" + a.paras.join("\n") + (cls ? "\n\nКлассы:\n" + cls : "")
+        : "Ты помогаешь администратору сервера Garry's Mod DarkRP CITY-67. Объясни пункт правил сервера простыми словами для админа, по-русски, коротко markdown-списком: 1) что запрещено, 2) пример нарушения, 3) что НЕ является нарушением (если есть исключения), 4) какое наказание. Не выдумывай ничего сверх текста.\n\nПункт " + a.num + ". " + a.title + "\n" + a.paras.join("\n");
+      const { text } = await callAI(sys, [{ role:"user", content:"Объясни." }], undefined, t => showEx(t), { quick:true });
+      explainCache[key] = text; lsSet("explain3", explainCache); showEx(text); exBtn.hidden = true;
     } catch (e) { exBox.textContent = await aiErrorText(e); exBtn.disabled = false; }
   };
   return d;
 }
-let secFilter = lsGet("sec") || "";
-function buildSecChips(){
-  const secs = [...new Set(ARTS.map(a => a.sec))];
-  const box = $("secChips"); box.textContent = "";
-  [["", "Все"], ...secs.map(s => [s, "Р. " + s.split(".")[0] + " · " + s.split(". ").slice(1).join(". ").toLowerCase().replace(/^./, c => c.toUpperCase())])].forEach(([v, t]) => {
-    const b = document.createElement("button"); b.className = "chip"; b.type = "button"; b.textContent = t.length > 34 ? t.slice(0, 32) + "…" : t;
+let docFilter = lsGet("docf") || "", secFilter = lsGet("sec2") || "";
+function buildFilters(){
+  const df = $("docFilter"); df.textContent = "";
+  [["", "Всё"], ["svod", "Свод правил сервера"], ["code", "Кодекс города (полиция)"]].forEach(([v, t]) => {
+    const b = document.createElement("button"); b.className = "chip" + (v === "code" ? " pol" : ""); b.type = "button"; b.textContent = t;
+    b.setAttribute("aria-pressed", String(v === docFilter));
+    b.onclick = () => { docFilter = v; secFilter = ""; lsSet("docf", v); lsSet("sec2", ""); buildFilters(); doSearch(); };
+    df.appendChild(b);
+  });
+  const box = $("secChips"); box.textContent = ""; box.hidden = !docFilter;
+  if (!docFilter) return;
+  const secs = [...new Set(DOCDATA[docFilter].arts.map(a => a.sec))];
+  [["", "Все разделы"], ...secs.map(s => [s, "Р. " + s.split(".")[0] + " · " + s.split(". ").slice(1).join(". ").toLowerCase().replace(/^./, c => c.toUpperCase())])].forEach(([v, t]) => {
+    const b = document.createElement("button"); b.className = "chip" + (docFilter === "code" ? " pol" : ""); b.type = "button"; b.textContent = t.length > 34 ? t.slice(0, 32) + "…" : t;
     b.setAttribute("aria-pressed", String(v === secFilter));
-    b.onclick = () => { secFilter = v; lsSet("sec", v); buildSecChips(); doSearch(); };
+    b.onclick = () => { secFilter = v; lsSet("sec2", v); buildFilters(); doSearch(); };
     box.appendChild(b);
   });
 }
@@ -1462,48 +2120,61 @@ function doSearch(){
   box.textContent = "";
   try { localStorage.setItem("q", raw); } catch(e) {}
   if (!ARTS.length) return;
-  const pool = a => !secFilter || a.sec === secFilter;
+  const pool = ARTS.filter(a => (!docFilter || a.doc === docFilter) && (!secFilter || a.sec === secFilter));
   if (!q) {
-    const list = ARTS.filter(pool);
-    $("qmeta").textContent = `Пунктов: ${list.length}. Нажми на пункт, чтобы открыть полный текст.`;
-    let sec = null;
-    list.forEach(a => { if (a.sec !== sec) { sec = a.sec; const h = document.createElement("div"); h.className = "sec"; h.textContent = "Раздел " + sec; box.appendChild(h); } box.appendChild(card(a, [], null)); });
+    $("qmeta").textContent = `Пунктов: ${pool.length}. Нажми на пункт, чтобы открыть полный текст.`;
+    let sec = null, doc = null;
+    pool.forEach(a => {
+      if (a.doc !== doc) { doc = a.doc; sec = null; if (!docFilter) { const h = document.createElement("div"); h.className = "sec"; h.style.color = a.doc === "code" ? "var(--police)" : "var(--accent)"; h.textContent = DOCS[a.doc].name; box.appendChild(h); } }
+      if (a.sec !== sec) { sec = a.sec; const h = document.createElement("div"); h.className = "sec"; h.textContent = "Раздел " + sec; box.appendChild(h); }
+      box.appendChild(card(a, [], null));
+    });
     return;
   }
-  const numQ = q.match(/^(\d+[аa]?\.\d+)\.?$/);
+  const numQ = q.match(/^(мк|кодекс|к|св|свод|с|п|ст)?\.?\s*(\d+[аa]?\.\d+(?:\.\d+)?)\.?$/);
   if (numQ) {
-    const a = findArt(numQ[1]);
-    $("qmeta").textContent = a ? "Пункт " + a.num : "Пункт не найден";
-    if (a) { const c = card(a, [], null); box.appendChild(c); c.querySelector(".art-h").click(); }
+    const want = /^(мк|кодекс|к)$/.test(numQ[1] || "") ? "code" : /^(св|свод|с|п)$/.test(numQ[1] || "") ? "svod" : docFilter;
+    let found = (want ? [want] : DOC_IDS).map(d => findArt(numQ[2], d)).filter(Boolean);
+    if (found.some(a => norm(a.num) === norm(numQ[2]))) found = found.filter(a => norm(a.num) === norm(numQ[2]));
+    $("qmeta").textContent = found.length ? found.map(a => DOCS[a.doc].short + " " + a.num).join(" и ") : "Пункт не найден";
+    found.forEach(a => { const c = card(a, [], null); box.appendChild(c); if (found.length === 1) c.querySelector(".art-h").click(); });
     return;
   }
   const stems = stemsOf(raw);
-  const scored = scoreArts(stems).filter(x => pool(x.a));
+  const scored = scoreArts(stems, pool);
   scored.sort((x, y) => (y.all - x.all) || (y.score - x.score));
   const full = scored.filter(x => x.all), shown = full.length ? full : scored;
-  $("qmeta").textContent = shown.length ? (full.length ? `Найдено пунктов: ${full.length}` : "Точных совпадений нет — показываю частичные") : "Ничего не найдено. Попробуй другое слово или открой «Разбор».";
+  $("qmeta").textContent = shown.length ? (full.length ? `Найдено: ${full.length}` : "Точных совпадений нет — показываю частичные") : "Ничего не найдено. Попробуй другое слово или открой «Разбор».";
   shown.slice(0, 30).forEach(x => box.appendChild(card(x.a, stems, x.best)));
 }
 let qTimer;
 $("q").addEventListener("input", () => { clearTimeout(qTimer); qTimer = setTimeout(doSearch, 120); });
 try { $("q").value = localStorage.getItem("q") || ""; } catch(e) {}
 
-/* ---------- Текст для ИИ: полный или сжатый Свод ---------- */
+/* ---------- Текст для ИИ: полные или сжатые документы ---------- */
 function artText(a){ return a.num + ". " + a.title + "\n" + a.paras.join("\n"); }
-function buildSystem(mode, turns){
-  const head = ROLE + "\n\n" + SCHEMA + "\n\n";
-  if (mode !== "compact") return head + "===== СВОД ПРАВИЛ CITY-67 =====\n" + RULES + "\n===== КОНЕЦ СВОДА =====\n\nСИТУАЦИЯ:";
+let caseMode = lsGet("caseMode") || "both";
+function buildSystem(mode, turns, cm = caseMode){
+  const head = ROLE + "\n" + MODE_TEXT[cm] + "\n\n" + SCHEMA + "\n\n" + RULES_TEXT + "\n\n";
+  const docs = cm === "both" ? DOC_IDS : [cm];
+  if (mode !== "compact") return head + docs.map(d => `===== ${DOCS[d].name.toUpperCase()} =====\n${DOCDATA[d].text}\n===== КОНЕЦ: ${DOCS[d].name} =====`).join("\n\n") + "\n\nСИТУАЦИЯ:";
   const text = turns.filter(t => t.role === "user").map(t => t.content).join("\n");
-  const core = new Set(["0.2","0.5","0.6","0.7","0.8"]);
-  const mentioned = [...norm(text).matchAll(/\d+[аa]?\.\d+/g)].map(m => findArt(m[0])?.num).filter(Boolean);
-  const top = scoreArts(stemsOf(text, true)).sort((x, y) => (y.hit - x.hit) || (y.score - x.score)).slice(0, 10).map(x => x.a.num);
-  const pick = new Set([...core, ...mentioned, ...top]);
-  const index = ARTS.map(a => `${a.num} ${a.title} — ${(a.sanc.join(" ") || "санкция в тексте пункта").replace(/^Санкция:\s*/i, "")}`).join("\n");
-  const full = ARTS.filter(a => pick.has(a.num)).map(artText).join("\n\n");
-  return head + "Ниже: (1) оглавление ВСЕХ пунктов Свода с санкциями; (2) полный текст общих положений и пунктов, подходящих к ситуации. Если нужный пункт есть только в оглавлении — опирайся на его название и санкцию.\n\n===== ОГЛАВЛЕНИЕ СВОДА CITY-67 =====\n" + index + "\n\n===== ПОЛНЫЙ ТЕКСТ ВЫБРАННЫХ ПУНКТОВ =====\n" + full + "\n===== КОНЕЦ =====\n\nСИТУАЦИЯ:";
+  const core = { svod: ["0.2","0.5","0.6","0.7","0.8"], code: ["0.5","0.6","0.7","0.8","10.2","10.3","10.7"] };
+  return head + "Ниже по каждому документу: оглавление ВСЕХ пунктов с наказаниями и полный текст общих положений и пунктов, подходящих к ситуации. Если нужный пункт есть только в оглавлении — опирайся на его название и наказание.\n\n" + docs.map(d => {
+    const arts = DOCDATA[d].arts;
+    const mentioned = [...norm(text).matchAll(/\d+[аa]?\.\d+(?:\.\d+)?/g)].map(m => findArt(m[0], d)?.num).filter(Boolean);
+    const top = scoreArts(stemsOf(text, true), arts).sort((x, y) => (y.hit - x.hit) || (y.score - x.score)).slice(0, d === "code" ? 12 : 10).map(x => x.a.num);
+    const pick = new Set([...core[d], ...mentioned, ...top]);
+    const index = arts.map(a => `${a.num} ${a.title} — ${(a.sanc.join(" ") || (a.classes?.join(", ")) || "см. текст").replace(/^(Санкция|Класс):\s*/i, "")}`).join("\n");
+    const full = arts.filter(a => pick.has(a.num)).map(artText).join("\n\n");
+    return `===== ${DOCS[d].name.toUpperCase()}: ОГЛАВЛЕНИЕ =====\n${index}\n\n===== ${DOCS[d].name.toUpperCase()}: ПОЛНЫЙ ТЕКСТ ВЫБРАННЫХ ПУНКТОВ =====\n${full}`;
+  }).join("\n\n") + "\n===== КОНЕЦ =====\n\nСИТУАЦИЯ:";
 }
 
 /* ---------- Разбор ---------- */
+function renderMode(){ $("modeSeg").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === caseMode))); }
+$("modeSeg").querySelectorAll("button").forEach(b => b.onclick = () => { caseMode = b.dataset.mode; lsSet("caseMode", caseMode); renderMode(); });
+renderMode();
 EXAMPLES.forEach(t => {
   const b = document.createElement("button");
   b.className = "chip"; b.type = "button"; b.title = t;
@@ -1523,51 +2194,81 @@ function parseVerdict(text){
 }
 const SEV = { none:"sev-none", warn:"sev-warn", ban:"sev-ban", perm:"sev-perm" };
 const sevCls = p => SEV[p.severity] || (/перм/i.test(p.verdict) ? "sev-perm" : /нет|не наруш/i.test(p.verdict) ? "sev-none" : /предупр/i.test(p.verdict) ? "sev-warn" : /бан/i.test(p.verdict) ? "sev-ban" : "sev-other");
-const arr = x => Array.isArray(x) ? x.filter(Boolean) : (x ? [x] : []);
-
+const showAdmin = p => p.verdict && p.verdict !== "—";
+function pillsHtml(p){
+  let h = "";
+  if (showAdmin(p)) h += `<span class="pill ${sevCls(p)}" title="Наказание администрации">${esc(p.verdict)}</span>`;
+  if (p.arrest && !/^(—|-)?$/.test(String(p.arrest).trim())) h += `<span class="pill sev-pol" title="Для полиции">Арест: ${esc(String(p.arrest).length > 60 ? String(p.arrest).slice(0, 58) + "…" : p.arrest)}</span>`;
+  return `<span class="pills">${h || '<span class="pill sev-none">нарушений нет</span>'}</span>`;
+}
+function vioHtml(x, many){
+  const art = findArt(x.article, "svod");
+  return `<details class="vio"${many ? "" : " open"}><summary><span class="doc svod">СВОД</span><span class="num">${esc(x.article)}${x.part ? " " + esc(x.part) : ""}</span><span class="ttl">${esc(x.title || art?.title || "")}</span><span class="give">${esc(x.assigned || "")}</span><span class="chev">›</span></summary>
+    <div class="vio-b">
+      ${art ? "" : `<div class="warnbox">Пункт ${esc(x.article)} не найден в Своде — ИИ мог ошибиться, проверь вручную.</div>`}
+      <div class="chain">
+        <span class="k">Причина</span><span class="v">${esc(x.reason || "—")}</span>
+        <span class="k">Нарушение</span><span class="v">${esc(x.meaning || art?.title || "—")}</span>
+        <span class="k">Санкция</span><span class="v">${esc(x.sanction || art?.sanc.join(" ") || "—")}</span>
+        <span class="k">Итог</span><span class="v res">${esc(x.assigned || "—")}</span>
+      </div>
+      ${art ? `<details class="fold"><summary><span class="chev">›</span>Полный текст: Свод ${esc(art.num)} «${esc(art.title)}»</summary><div class="full">${fullHtml(art)}</div></details>` : ""}
+    </div></details>`;
+}
+function chargeHtml(x, many){
+  const art = findArt(x.article, "code");
+  const cls = String(x.class || "").match(/V|M-[ABC]|F-[ABC]|AF/)?.[0];
+  const ci = cls && CLASSES[cls];
+  const give = [cls, x.minutes && (String(x.minutes).match(/\d/) ? String(x.minutes).replace(/\s*мин.*$/,"") + " мин" : x.minutes)].filter(Boolean).join(" · ");
+  return `<details class="vio charge"${many ? "" : " open"}><summary><span class="doc code">МК</span><span class="num code">${esc(x.article)}</span><span class="ttl">${esc(x.title || art?.title || "")}</span><span class="give">${esc(give)}</span><span class="chev">›</span></summary>
+    <div class="vio-b">
+      ${art ? "" : `<div class="warnbox">Статья ${esc(x.article)} не найдена в Кодексе — ИИ мог ошибиться, проверь вручную.</div>`}
+      <div class="chain">
+        <span class="k">Причина</span><span class="v">${esc(x.reason || "—")}</span>
+        <span class="k">Состав</span><span class="v">${esc(x.meaning || art?.title || "—")}</span>
+        <span class="k">Класс</span><span class="v">${esc(cls || x.class || "—")}${ci?.cat ? " — " + esc(ci.cat) : ""}</span>
+        <span class="k">Срок IC</span><span class="v">${esc(x.term || ci?.term || "—")}</span>
+        <span class="k">Штраф</span><span class="v">${esc(x.fine || ci?.fine || "—")}</span>
+        <span class="k">Арест</span><span class="v res">${esc(x.minutes ? (String(x.minutes).match(/мин/) ? x.minutes : x.minutes + " мин") : "—")}${ci?.min ? ` <span class="note">(диапазон ${esc(ci.min)})</span>` : ""}</span>
+      </div>
+      ${art ? `<details class="fold"><summary><span class="chev">›</span>Полный текст: Кодекс ${esc(art.num)} «${esc(art.title)}»</summary><div class="full">${fullHtml(art)}</div></details>` : ""}
+    </div></details>`;
+}
 function renderVerdict(v, by){
   const players = arr(v.players);
   let h = `<div class="verdict">`;
   if (v.summary) h += `<p class="summary">${esc(v.summary)}</p>`;
-  h += `<div class="panel" style="padding:4px 14px;gap:0">` + players.map(p => `<div class="ov"><span class="who">${esc(p.name)}</span><span class="pill ${sevCls(p)}">${esc(p.verdict || "—")}</span></div>`).join("") + `</div>`;
+  h += `<div class="panel" style="padding:4px 14px;gap:0">` + players.map(p => `<div class="ov"><span class="who">${esc(p.name)}</span>${pillsHtml(p)}</div>`).join("") + `</div>`;
   players.forEach(p => {
-    const vios = arr(p.violations);
-    h += `<section class="player"><div class="player-h"><h3>${esc(p.name)}</h3><span class="pill ${sevCls(p)}">${esc(p.verdict || "—")}</span></div><div class="player-b">`;
-    if (!vios.length) h += `<div class="blk" style="padding:10px 0"><span class="k">Почему нет нарушения</span><span>${esc(p.allowed || "Нарушений не найдено.")}</span></div>`;
-    vios.forEach(x => {
-      const art = findArt(x.article);
-      h += `<details class="vio"${vios.length === 1 ? " open" : ""}><summary><span class="num">${esc(x.article)}${x.part ? " " + esc(x.part) : ""}</span><span class="ttl">${esc(x.title || art?.title || "")}</span><span class="give">${esc(x.assigned || "")}</span><span class="chev">›</span></summary>
-        <div class="vio-b">
-          ${art ? "" : `<div class="warnbox">Пункт ${esc(x.article)} не найден в Своде — ИИ мог ошибиться, проверь вручную.</div>`}
-          <div class="chain">
-            <span class="k">Причина</span><span class="v">${esc(x.reason || "—")}</span>
-            <span class="k">Нарушение</span><span class="v">${esc(x.meaning || art?.title || "—")}</span>
-            <span class="k">Санкция</span><span class="v">${esc(x.sanction || art?.sanc.join(" ") || "—")}</span>
-            <span class="k">Итог</span><span class="v res">${esc(x.assigned || "—")}</span>
-          </div>
-          ${art ? `<details class="fold"><summary><span class="chev">›</span>Полный текст пункта ${esc(art.num)} «${esc(art.title)}»</summary><div class="full">${fullHtml(art)}</div></details>` : ""}
-        </div></details>`;
-    });
-    if (vios.length && p.allowed) h += `<details class="fold"><summary><span class="chev">›</span>Что не является нарушением</summary><div class="inner">${esc(p.allowed)}</div></details>`;
+    const vios = arr(p.violations), chs = arr(p.charges);
+    h += `<section class="player"><div class="player-h"><h3>${esc(p.name)}</h3>${pillsHtml(p)}</div><div class="player-b">`;
+    if (!vios.length && !chs.length) h += `<div class="blk" style="padding:10px 0"><span class="k">Почему нет нарушения</span><span>${esc(p.allowed || "Нарушений не найдено.")}</span></div>`;
+    if (vios.length) { h += `<div class="grp">Правила сервера → наказание админа</div>`; vios.forEach(x => h += vioHtml(x, vios.length + chs.length > 1)); }
+    if (chs.length) {
+      h += `<div class="grp pol">Кодекс города → для полиции</div>`; chs.forEach(x => h += chargeHtml(x, vios.length + chs.length > 1));
+      if (p.arrest) h += `<div class="total"><span>Итог ареста</span><span>${esc(p.arrest)}</span></div>`;
+    }
+    if ((vios.length || chs.length) && p.allowed) h += `<details class="fold"><summary><span class="chev">›</span>Что законно / не является нарушением</summary><div class="inner">${esc(p.allowed)}</div></details>`;
     const ag = arr(p.aggravating), mi = arr(p.mitigating);
-    if (vios.length && (ag.length || mi.length || p.calculation)) {
-      h += `<details class="fold"><summary><span class="chev">›</span>Как посчитан срок</summary><div class="inner">
-        ${ag.length ? `<div class="blk"><span class="k">Отягчающие (п. 0.7.3)</span><ul>${ag.map(t => `<li class="plus">${esc(t)}</li>`).join("")}</ul></div>` : ""}
-        ${mi.length ? `<div class="blk"><span class="k">Смягчающие (п. 0.7.4)</span><ul>${mi.map(t => `<li class="minus">${esc(t)}</li>`).join("")}</ul></div>` : ""}
+    if ((vios.length || chs.length) && (ag.length || mi.length || p.calculation)) {
+      h += `<details class="fold"><summary><span class="chev">›</span>Как посчитано</summary><div class="inner">
+        ${ag.length ? `<div class="blk"><span class="k">Отягчающие</span><ul>${ag.map(t => `<li class="plus">${esc(t)}</li>`).join("")}</ul></div>` : ""}
+        ${mi.length ? `<div class="blk"><span class="k">Смягчающие</span><ul>${mi.map(t => `<li class="minus">${esc(t)}</li>`).join("")}</ul></div>` : ""}
         ${p.calculation ? `<div class="blk"><span class="k">Расчёт</span><span>${esc(p.calculation)}</span></div>` : ""}</div></details>`;
     }
     h += `</div></section>`;
   });
   const miss = arr(v.missing);
-  if (miss.length) h += `<div class="missing"><h4>Чего не хватает для точного вердикта</h4><ul>${miss.map(t => `<li>${esc(t)}</li>`).join("")}</ul></div>`;
+  if (miss.length) h += `<div class="missing"><h4>Чего не хватает для точного итога</h4><ul>${miss.map(t => `<li>${esc(t)}</li>`).join("")}</ul></div>`;
   if (by) h += `<div class="by">Ответил: ${esc(by)}</div>`;
   return h + `</div>`;
 }
 function verdictText(v){
   const L = [];
   arr(v.players).forEach(p => {
-    L.push(`${p.name} — ${p.verdict}`);
-    arr(p.violations).forEach(x => L.push(`  • п. ${x.article}${x.part ? " " + x.part : ""} ${x.title || ""}: ${x.reason || ""} → ${x.assigned || ""}`));
+    L.push(`${p.name}${showAdmin(p) ? " — админ: " + p.verdict : ""}${p.arrest ? " | полиция: " + p.arrest : ""}`);
+    arr(p.violations).forEach(x => L.push(`  • Свод ${x.article}${x.part ? " " + x.part : ""} ${x.title || ""}: ${x.reason || ""} → ${x.assigned || ""}`));
+    arr(p.charges).forEach(x => L.push(`  • МК ${x.article} ${x.title || ""} (${x.class || ""}): ${x.reason || ""} → ${x.minutes ? x.minutes + " мин" : ""}${x.fine ? ", " + x.fine : ""}`));
   });
   return L.join("\n");
 }
@@ -1590,12 +2291,13 @@ async function run(){
   if (busy || !current) return;
   busy = true; askBtn.disabled = followBtn.disabled = true; stopBtn.hidden = false;
   resPanel.hidden = false; followWrap.hidden = true; setStatus(""); progressNote = "";
-  resEl.innerHTML = '<div class="note"><span class="thinking"><i></i><i></i><i></i></span>Читаю Свод и разбираю ситуацию…</div>';
+  resEl.innerHTML = '<div class="note"><span class="thinking"><i></i><i></i><i></i></span>Читаю документы и разбираю ситуацию…</div>';
   aiNoteFn = t => { progressNote = t; resEl.innerHTML = `<div class="note"><span class="thinking"><i></i><i></i><i></i></span>${esc(t)}</div>`; };
   ctl = new AbortController();
+  const cm = current.mode || caseMode;
   try {
     const turns = current.turns.map((t, i) => i > 0 && t.role === "user" ? { role:"user", content: t.content + "\n\n(Верни полный обновлённый JSON по той же схеме.)" } : t);
-    const { text, by } = await callAI(mode => buildSystem(mode, current.turns), turns, ctl.signal, t => progress(t));
+    const { text, by } = await callAI(mode => buildSystem(mode, current.turns, cm), turns, ctl.signal, t => progress(t));
     if (!text || !text.trim()) throw { message: "ИИ вернул пустой ответ. Попробуй ещё раз." };
     current.turns.push({ role:"assistant", content: text }); current.by = by;
     showCase(current);
@@ -1613,7 +2315,7 @@ async function run(){
 askBtn.onclick = () => {
   const t = sit.value.trim();
   if (!t) { setStatus("Опиши ситуацию.", true); sit.focus(); return; }
-  current = { id: "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), q: t, turns: [{ role:"user", content: t }], createdAt: Date.now() };
+  current = { id: "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), q: t, mode: caseMode, turns: [{ role:"user", content: t }], createdAt: Date.now() };
   run();
 };
 followBtn.onclick = () => {
@@ -1639,7 +2341,7 @@ Store.onChange(items => {
     const r = document.createElement("div"); r.className = "hrow";
     const last = [...(c.turns || [])].reverse().find(t => t.role === "assistant");
     const v = last && parseVerdict(last.content);
-    const sumLine = v ? arr(v.players).map(p => p.name + ": " + p.verdict).join(" · ") : "";
+    const sumLine = v ? arr(v.players).map(p => p.name + ": " + [showAdmin(p) && p.verdict, p.arrest].filter(Boolean).join(" / ")).join(" · ") : "";
     r.innerHTML = `<button class="open"><span class="q"></span><span class="when"></span></button><button class="del" aria-label="Удалить разбор">✕</button>`;
     r.querySelector(".q").textContent = c.q;
     r.querySelector(".when").textContent = fmtWhen(c.updatedAt) + (sumLine ? " · " + sumLine : "");
@@ -1665,6 +2367,6 @@ document.querySelectorAll(".nav button").forEach(b => b.onclick = () => showView
 try { const v = localStorage.getItem("view"); if (v && v !== "search" && $("view-" + v)) showView(v); } catch(e) {}
 
 Store.init();
-RulesStore.init(applyRules);
+RulesStore.init(applyDoc);
 </script>
 </body></html>
